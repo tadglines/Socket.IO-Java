@@ -29,8 +29,8 @@ import java.util.Set;
 
 import javax.servlet.http.HttpServletRequest;
 
-import com.glines.socketio.SocketIOServlet;
-import com.glines.socketio.SocketIOInbound;
+import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOServlet;
 
 public class BroadcastSocketServlet extends SocketIOServlet {
 	private static final long serialVersionUID = 1L;

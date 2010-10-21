@@ -21,16 +21,16 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio.transport;
+package com.glines.socketio.server.transport;
 
 import java.io.IOException;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.glines.socketio.SocketIOInbound;
-import com.glines.socketio.SocketIOSession;
-import com.glines.socketio.SocketIOSession.SessionTransportHandler;
+import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
 
 public abstract class AbstractHttpTransport extends AbstractTransport {
 

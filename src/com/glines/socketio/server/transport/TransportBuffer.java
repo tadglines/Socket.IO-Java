@@ -21,7 +21,7 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio.transport;
+package com.glines.socketio.server.transport;
 
 import java.util.ArrayList;
 import java.util.List;

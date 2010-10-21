@@ -33,9 +33,9 @@ import javax.servlet.http.HttpServletRequest;
 
 import org.eclipse.jetty.util.ajax.JSON;
 
-import com.glines.socketio.SocketIOException;
-import com.glines.socketio.SocketIOServlet;
-import com.glines.socketio.SocketIOInbound;
+import com.glines.socketio.server.SocketIOException;
+import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOServlet;
 
 public class ChatSocketServlet extends SocketIOServlet {
 	private static final long serialVersionUID = 1L;

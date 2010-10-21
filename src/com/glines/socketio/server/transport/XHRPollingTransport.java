@@ -21,7 +21,7 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio.transport;
+package com.glines.socketio.server.transport;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -35,10 +35,10 @@ import org.eclipse.jetty.continuation.Continuation;
 import org.eclipse.jetty.continuation.ContinuationListener;
 import org.eclipse.jetty.continuation.ContinuationSupport;
 
-import com.glines.socketio.SocketIOException;
-import com.glines.socketio.SocketIOInbound;
-import com.glines.socketio.SocketIOSession;
-import com.glines.socketio.SocketIOSession.SessionTransportHandler;
+import com.glines.socketio.server.SocketIOException;
+import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
 
 public class XHRPollingTransport extends AbstractHttpTransport {
 	public static final String TRANSPORT_NAME = "xhr-polling";

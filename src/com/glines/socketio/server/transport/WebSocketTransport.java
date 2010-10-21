@@ -21,7 +21,7 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio.transport;
+package com.glines.socketio.server.transport;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -32,9 +32,9 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocketFactory;
 
-import com.glines.socketio.SocketIOException;
-import com.glines.socketio.SocketIOInbound;
-import com.glines.socketio.SocketIOSession;
+import com.glines.socketio.server.SocketIOException;
+import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOSession;
 
 public class WebSocketTransport extends AbstractTransport {
 	public static final String TRANSPORT_NAME = "websocket";

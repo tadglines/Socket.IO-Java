@@ -21,13 +21,14 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio.transport;
+package com.glines.socketio.server.transport;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
-import com.glines.socketio.Transport;
+
+import com.glines.socketio.server.Transport;
 
 public abstract class AbstractTransport implements Transport {
 	private static final String MESSAGE_MARKER = "~m~";

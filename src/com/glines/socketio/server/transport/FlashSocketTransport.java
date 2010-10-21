@@ -21,7 +21,7 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio.transport;
+package com.glines.socketio.server.transport;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,8 +41,8 @@ import java.util.concurrent.Future;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.glines.socketio.SocketIOInbound;
-import com.glines.socketio.SocketIOSession;
+import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOSession;
 
 public class FlashSocketTransport extends WebSocketTransport {
 	public static final String TRANSPORT_NAME = "flashsocket";

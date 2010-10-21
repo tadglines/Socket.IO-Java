@@ -21,7 +21,7 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio;
+package com.glines.socketio.server;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,9 +36,9 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.glines.socketio.transport.FlashSocketTransport;
-import com.glines.socketio.transport.WebSocketTransport;
-import com.glines.socketio.transport.XHRPollingTransport;
+import com.glines.socketio.server.transport.FlashSocketTransport;
+import com.glines.socketio.server.transport.WebSocketTransport;
+import com.glines.socketio.server.transport.XHRPollingTransport;
 
 /**
  */

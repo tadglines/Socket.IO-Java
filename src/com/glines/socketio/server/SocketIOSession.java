@@ -21,7 +21,7 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio;
+package com.glines.socketio.server;
 
 import java.io.IOException;
 
