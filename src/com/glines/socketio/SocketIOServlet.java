@@ -38,10 +38,10 @@ public abstract class SocketIOServlet extends GenericServlet {
 
 		sessionManager = new SocketIOSessionManager(bufferSize, maxIdleTime);
 		WebSocketTransport wst = new WebSocketTransport(bufferSize, maxIdleTime);
-//		FlashSocketTransport fst = new FlashSocketTransport(bufferSize, maxIdleTime);
+		FlashSocketTransport fst = new FlashSocketTransport(bufferSize, maxIdleTime);
 		XHRPollingTransport xhrpt = new XHRPollingTransport(bufferSize, maxIdleTime);
 		transports.put(wst.getName(), wst);
-//		transports.put(fst.getName(), fst);
+		transports.put(fst.getName(), fst);
 		transports.put(xhrpt.getName(), xhrpt);
 		
 		for (Transport t: transports.values()) {

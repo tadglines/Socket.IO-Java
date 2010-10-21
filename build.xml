@@ -1,0 +1,51 @@
+<project name="socketio-java" default="dist">
+	<description>J2EE Servlet based Socket.IO Server Implementation</description>
+
+	<property file="version.properties"/>
+
+	<path id="classpath">
+		<fileset dir="WebContent/WEB-INF/lib">
+			<include name="*.jar"/>
+		</fileset>
+	</path>
+
+	<target name="init">
+		<mkdir dir="dist"/>
+		<mkdir dir="build"/>
+		<mkdir dir="build/classes"/>
+	</target>
+
+	<target name="clean">
+		<delete dir="dist"/>
+		<delete dir="build"/>
+	</target>
+
+	<target name="compile" depends="init">
+		<javac sourcepath="" srcdir="src" destdir="build/classes" debug="on"
+	        target="1.6">
+			<include name="**/*.java"/>
+			<classpath>
+				<path refid="classpath"/>
+			</classpath>
+		</javac>
+	    <copy todir="build/classes">
+			<fileset dir="src">
+				<include name="**/*.js"/>
+				<include name="**/*.swf"/>
+			</fileset>
+	    </copy>
+	</target>
+
+	<target name="dist" depends="compile">
+		<jar destfile="dist/socketio-java-${socketio-java.version}.jar">
+			<fileset dir="build/classes">
+				<include name="com/glines/socketio/**/*" />
+			</fileset>
+			<manifest>
+		        <attribute name="Implementation-Vendor" value="http://code.google.com/p/socketio-java"/>
+		        <attribute name="Implementation-Title" value="socketio-.java"/>
+		        <attribute name="Implementation-Version" value="${socketio-java.version}"/>
+			</manifest>
+	    </jar>
+	</target>
+</project>
