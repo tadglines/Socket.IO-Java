@@ -1,0 +1,18 @@
+syntax: glob
+*\.cert
+*\.crt
+*\.key
+*\.orig
+*\.iml
+*\.ipr
+*\.iws
+*\.swp
+bin
+build
+dist
+\.git
+*~
+\.DS_Store
+\.settings
+\.project
+\.classpath
