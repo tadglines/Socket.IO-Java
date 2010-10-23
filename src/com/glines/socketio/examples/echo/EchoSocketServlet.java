@@ -48,7 +48,7 @@ public class EchoSocketServlet extends SocketIOServlet {
 		}
 
 		@Override
-		public void onDisconnect(boolean timedout) {
+		public void onDisconnect(DisconnectReason reason) {
 			synchronized(this) {
 				this.outbound = null;
 			}

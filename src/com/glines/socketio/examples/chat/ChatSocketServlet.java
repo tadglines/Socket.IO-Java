@@ -56,14 +56,14 @@ public class ChatSocketServlet extends SocketIOServlet {
 				outbound.sendMessage("~j~" + JSON.toString(
 						Collections.singletonMap("buffer", new String[]{})));
 			} catch (SocketIOException e) {
-				onDisconnect(false);
+				outbound.disconnect();
 			}
 			broadcast("~j~" + JSON.toString(
 					Collections.singletonMap("announcement", sessionId + " connected")));
 		}
 
 		@Override
-		public void onDisconnect(boolean timedout) {
+		public void onDisconnect(DisconnectReason reason) {
 			synchronized(this) {
 				this.outbound = null;
 			}

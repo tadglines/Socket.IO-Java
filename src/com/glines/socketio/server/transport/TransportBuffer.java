@@ -67,6 +67,19 @@ public class TransportBuffer {
 		return inputSemaphore.availablePermits();
 	}
 
+	public boolean isEmpty() {
+		return queue.isEmpty();
+	}
+
+	public void clear() {
+		List<String> list = new ArrayList<String>();
+		queue.drainTo(list);
+
+		for (String str: list) {
+			inputSemaphore.release(str.length());
+		}
+	}
+	
 	public List<String> drainMessages() {
 		List<String> list = new ArrayList<String>();
 		queue.drainTo(list);
@@ -89,22 +102,6 @@ public class TransportBuffer {
 			return null;
 		}
 	}
-
-	public boolean flush() {
-		BufferListener listener = listenerRef.get();
-		if (listener != null) {
-			try {
-				if (queue.size() != 0) {
-					ArrayList<String> messages = new ArrayList<String>(queue.size());
-					queue.drainTo(messages);
-					return listener.onMessages(messages);
-				}
-			} catch (Throwable t) {
-				return false;
-			}
-		}
-		return true;
-	}
 	
 	public boolean putMessage(String message, long timeout) {
 		BufferListener listener = listenerRef.get();
@@ -123,7 +120,9 @@ public class TransportBuffer {
 			}
 		} else {
 			try {
-				inputSemaphore.tryAcquire(message.length(), timeout, TimeUnit.MILLISECONDS);
+				if (!inputSemaphore.tryAcquire(message.length(), timeout, TimeUnit.MILLISECONDS)) {
+					return false;
+				}
 				queue.offer(message);
 				return true;
 			} catch (InterruptedException e) {

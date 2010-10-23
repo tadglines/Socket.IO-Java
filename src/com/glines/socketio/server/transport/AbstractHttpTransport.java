@@ -64,7 +64,7 @@ public abstract class AbstractHttpTransport extends AbstractTransport {
 				if (handler != null) {
 					handler.handle(request, response, session);
 				} else {
-					session.onDisconnect(false);
+					session.onShutdown();
 		    		response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 				}
 			} else {

@@ -26,6 +26,12 @@ package com.glines.socketio.server;
 import javax.servlet.http.HttpServletRequest;
 
 public interface SocketIOInbound {
+	enum DisconnectReason {
+		NORMAL,		// Client or server initiated
+		TIMEOUT,	// Some kind of timeout happened
+		ERROR;		// An error of some kind occurred and the connection has been aborted
+	}
+	
 	interface Factory {
 		SocketIOInbound getInbound(HttpServletRequest request, String protocol);
 	}
@@ -35,6 +41,7 @@ public interface SocketIOInbound {
 		 * Initiate socket disconnect. This method may return before the connection disconnect completes.
 		 * The onDisconnect() method of the associated SocketInbound will be called when the disconnect is completed.
 		 * The onDisconnect() method may be called during the invocation of this method.
+		 * Messages may continue to arrive via onMessage().
 		 */
 		void disconnect();
 
@@ -62,9 +69,10 @@ public interface SocketIOInbound {
 	
 	/**
 	 * Called when the socket connection is closed. This will only ever be called once.
-	 * @param timeout this value will be true if the connection was closed due to a timeout
+	 * This method may be called instead of onConnect() if the connection handshake isn't completed successfully.
+	 * @param The reason for the disconnect.
 	 */
-	void onDisconnect(boolean timeout);
+	void onDisconnect(DisconnectReason reason);
 	
 	/**
 	 * Called once for each message sent by the client.

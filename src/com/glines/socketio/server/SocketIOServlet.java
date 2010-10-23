@@ -59,7 +59,7 @@ public abstract class SocketIOServlet extends GenericServlet {
 		str = this.getInitParameter(MAX_IDLE_TIME_INIT_PARAM);
 		int maxIdleTime = str==null ? MAX_IDLE_TIME_DEFAULT : Integer.parseInt(str);
 
-		sessionManager = new SocketIOSessionManager(bufferSize, maxIdleTime);
+		sessionManager = new SocketIOSessionManager();
 		WebSocketTransport wst = new WebSocketTransport(bufferSize, maxIdleTime);
 		FlashSocketTransport fst = new FlashSocketTransport(bufferSize, maxIdleTime);
 		XHRPollingTransport xhrpt = new XHRPollingTransport(bufferSize, maxIdleTime);

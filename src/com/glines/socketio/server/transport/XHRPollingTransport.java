@@ -35,13 +35,17 @@ import org.eclipse.jetty.continuation.Continuation;
 import org.eclipse.jetty.continuation.ContinuationListener;
 import org.eclipse.jetty.continuation.ContinuationSupport;
 
+import com.glines.socketio.common.SocketIOMessage;
+import com.glines.socketio.server.SocketIOClosedException;
 import com.glines.socketio.server.SocketIOException;
 import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOInbound.DisconnectReason;
 import com.glines.socketio.server.SocketIOSession;
 import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
 
 public class XHRPollingTransport extends AbstractHttpTransport {
 	public static final String TRANSPORT_NAME = "xhr-polling";
+	public static long GET_TIMEOUT = 20*1000;
 	private final int bufferSize;
 	private final int maxIdleTime;
 
@@ -75,19 +79,20 @@ public class XHRPollingTransport extends AbstractHttpTransport {
 		SocketIOInbound inbound = inboundFactory.getInbound(request, "");
 		if (inbound != null) {
  			final SocketIOSession session = sessionFactory.createSession(inbound);
+ 			session.setTimeout(maxIdleTime/2);
 			final SessionHelper handler =  new SessionHelper() {
 				private final TransportBuffer buffer = new TransportBuffer(bufferSize);
-				private boolean isConnected = true;
+				private volatile boolean isConnected = true;
 				private Continuation continuation = null;
 
 				@Override
 				public void disconnect() {
-					buffer.setListener(null);
-					isConnected = false;
-					if (continuation != null) {
-						HttpServletResponse response = (HttpServletResponse)continuation.getServletResponse();
-						response.setHeader("Connection", "close");
-						continuation.complete();
+					if (isConnected) {
+						isConnected = false;
+						if (buffer.putMessage(SocketIOMessage.encode(SocketIOMessage.Type.CLOSE, "close"), maxIdleTime) == false) {
+							session.onDisconnect(DisconnectReason.TIMEOUT);
+							abort();
+						}
 					}
 				}
 	
@@ -98,8 +103,13 @@ public class XHRPollingTransport extends AbstractHttpTransport {
 	
 				@Override
 				public void sendMessage(String message) throws SocketIOException {
-					if (buffer.putMessage(message, maxIdleTime) == false) {
-						session.onDisconnect(true);
+					if (isConnected) {
+						if (buffer.putMessage(message, maxIdleTime) == false) {
+							session.onDisconnect(DisconnectReason.TIMEOUT);
+							abort();
+						}
+					} else {
+						throw new SocketIOClosedException();
 					}
 				}
 	
@@ -108,7 +118,10 @@ public class XHRPollingTransport extends AbstractHttpTransport {
 						HttpServletResponse response, SocketIOSession session)
 						throws IOException {
 					if ("GET".equals(request.getMethod())) {
-						if (isConnected != false) {
+						session.clearTimeoutTimer();
+						if (!isConnected && buffer.isEmpty()) {
+							response.sendError(HttpServletResponse.SC_NOT_FOUND);
+						} else {
 							/*
 							 * If there are messages in the buffer, get them and return them.
 							 * If not, create continuation, register listener with buffer that will
@@ -116,7 +129,17 @@ public class XHRPollingTransport extends AbstractHttpTransport {
 							 */
 							List<String> messages = buffer.drainMessages();
 							if (messages.size() > 0) {
-								writeData(response, encode(messages));
+								StringBuilder data = new StringBuilder();
+								for (String msg: messages) {
+									data.append(SocketIOMessage.encode(SocketIOMessage.Type.TEXT, msg));
+								}
+								writeData(response, data.toString());
+								if (!isConnected) {
+									session.onDisconnect(DisconnectReason.NORMAL);
+									abort();
+								} else {
+									session.startTimeoutTimer();
+								}
 							} else {
 								continuation = ContinuationSupport.getContinuation(request);
 								continuation.setTimeout(20000);
@@ -125,46 +148,43 @@ public class XHRPollingTransport extends AbstractHttpTransport {
 							}
 						}
 					} else if ("POST".equals(request.getMethod())) {
-						int size = request.getContentLength();
-						BufferedReader reader = request.getReader();
-						String data;
-						List<String> list;
-						if (size == 0) {
-							list = Collections.singletonList("");
-						} else {
-							if (size > 0) {
-								char[] buf = new char[size];
-								if (reader.read(buf) != size) {
-						    		response.sendError(HttpServletResponse.SC_BAD_REQUEST);
-						    		return;
-								}
-								data = new String(buf);
+						if (isConnected) {
+							int size = request.getContentLength();
+							BufferedReader reader = request.getReader();
+							if (size == 0) {
+								response.sendError(HttpServletResponse.SC_BAD_REQUEST);
 							} else {
-								StringBuilder str = new StringBuilder();
-								char[] buf = new char[8192];
-								int nread = 0;
-								while ((nread = reader.read(buf)) != -1) {
-									str.append(buf, 0, nread);
+								String data;
+								if (size > 0) {
+									char[] buf = new char[size];
+									if (reader.read(buf) != size) {
+							    		response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+							    		return;
+									}
+									data = new String(buf);
+								} else {
+									StringBuilder str = new StringBuilder();
+									char[] buf = new char[8192];
+									int nread = 0;
+									while ((nread = reader.read(buf)) != -1) {
+										str.append(buf, 0, nread);
+									}
+									data = str.toString();
 								}
-								data = str.toString();
-							}
-							list = decode(data.substring(5));
-						}
-						String origin = request.getHeader("Origin");
-						if (origin != null) {
-							// TODO: Verify origin
-							
-							// TODO: Explain why this is needed. Possibly for IE's XDomainRequest?
-							response.setHeader("Access-Control-Allow-Origin", "*");
-							if (request.getCookies() != null) {
-								response.setHeader("Access-Control-Allow-Credentials", "true");
-							}
-						}
-						for (String msg: list) {
-							try {
-								session.onMessage(msg);
-							} catch (Throwable t) {
-								// Ignore
+								List<SocketIOMessage> list = SocketIOMessage.parse(data.substring(5));
+								String origin = request.getHeader("Origin");
+								if (origin != null) {
+									// TODO: Verify origin
+									
+									// TODO: Explain why this is needed. Possibly for IE's XDomainRequest?
+									response.setHeader("Access-Control-Allow-Origin", "*");
+									if (request.getCookies() != null) {
+										response.setHeader("Access-Control-Allow-Credentials", "true");
+									}
+								}
+								for (SocketIOMessage msg: list) {
+									session.onMessage(msg);
+								}
 							}
 						}
 					} else {
@@ -174,18 +194,7 @@ public class XHRPollingTransport extends AbstractHttpTransport {
 
 				@Override
 				public boolean onMessage(String message) {
-					try {
-						buffer.setListener(null);
-						HttpServletResponse response = (HttpServletResponse)continuation.getServletResponse();
-						try {
-							writeData(response, encode(message));
-						} catch (IOException e) {
-							return false;
-						}
-						return true;
-					} finally {
-						continuation.complete();
-					}
+					return onMessages(Collections.singletonList(message));
 				}
 
 				@Override
@@ -193,8 +202,12 @@ public class XHRPollingTransport extends AbstractHttpTransport {
 					try {
 						buffer.setListener(null);
 						HttpServletResponse response = (HttpServletResponse)continuation.getServletResponse();
+						StringBuilder data = new StringBuilder();
+						for (String msg: messages) {
+							data.append(SocketIOMessage.encode(SocketIOMessage.Type.TEXT, msg));
+						}
 						try {
-							writeData(response, encode(messages));
+							writeData(response, data.toString());
 						} catch (IOException e) {
 							return false;
 						}
@@ -206,27 +219,80 @@ public class XHRPollingTransport extends AbstractHttpTransport {
 
 				@Override
 				public void onComplete(Continuation cont) {
-					if (isConnected != true) {
-						session.onDisconnect(false);
-					}
+					buffer.setListener(null);
 					continuation = null;
+					if (!isConnected && buffer.isEmpty()) {
+						session.onDisconnect(DisconnectReason.NORMAL);
+						abort();
+					}
+					session.startTimeoutTimer();
 				}
 
 				@Override
 				public void onTimeout(Continuation cont) {
-					// TODO Auto-generated method stub
 					buffer.setListener(null);
 					continuation = null;
+					if (!isConnected && buffer.isEmpty()) {
+						session.onDisconnect(DisconnectReason.NORMAL);
+						abort();
+					}
 				}
 
 				@Override
 				public void connect(HttpServletRequest request, HttpServletResponse response) {
-					buffer.putMessage(session.getSessionId(), 0);
-					continuation = ContinuationSupport.getContinuation(request);
-					continuation.suspend(response);
-					buffer.setListener(this);
+					final StringBuilder str = new StringBuilder();
+					str.append(SocketIOMessage.encode(SocketIOMessage.Type.SESSION_ID, session.getSessionId()));
+					buffer.setListener(new TransportBuffer.BufferListener() {
+						@Override
+						public boolean onMessage(String message) {
+							str.append(SocketIOMessage.encode(SocketIOMessage.Type.TEXT, message));
+							return true;
+						}
+						@Override
+						public boolean onMessages(List<String> messages) {
+							for (String msg: messages) {
+								str.append(SocketIOMessage.encode(SocketIOMessage.Type.TEXT, msg));
+							}
+							return true;
+						}
+					});
 					session.onConnect(this);
-					buffer.flush();
+					response.setContentType("text/plain; charset=UTF-8");
+					String data = str.toString();
+					response.setContentLength(data.length());
+					try {
+						response.getWriter().write(data);
+					} catch (IOException e) {
+						abort();
+					}
+				}
+
+				@Override
+				public void abort() {
+					isConnected = false;
+					// Drain buffer of all messages and release any threads that may have been blocked on it
+					buffer.setListener(new TransportBuffer.BufferListener() {
+						@Override
+						public boolean onMessage(String message) {
+							return false;
+						}
+
+						@Override
+						public boolean onMessages(List<String> messages) {
+							return false;
+						}
+					});
+					buffer.clear();
+					// cancel any continuation
+					if (continuation != null) {
+						try {
+							((HttpServletResponse)continuation.getServletResponse()).sendError(HttpServletResponse.SC_NOT_FOUND);
+						} catch (IOException e) {
+							// Ignore since we are aborting anyway.
+						}
+						continuation.complete();
+					}
+					session.onShutdown();
 				}
 			};
 			handler.connect(request, response);

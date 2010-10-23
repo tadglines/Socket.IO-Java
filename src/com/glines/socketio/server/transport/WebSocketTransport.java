@@ -25,6 +25,7 @@ package com.glines.socketio.server.transport;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -32,23 +33,28 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocketFactory;
 
+import com.glines.socketio.common.SocketIOMessage;
+import com.glines.socketio.server.SocketIOClosedException;
 import com.glines.socketio.server.SocketIOException;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOSession;
 
 public class WebSocketTransport extends AbstractTransport {
 	public static final String TRANSPORT_NAME = "websocket";
+	public static final long CONNECTION_TIMEOUT = 10*1000;
 	private final WebSocketFactory wsFactory;
+	private final long maxIdleTime;
 
 	private class SessionWrapper implements WebSocket, SocketIOSession.SessionTransportHandler {
 		private final SocketIOSession session;
 		private Outbound outbound = null;
-		private boolean connected = false;
+		private boolean initiated = false;
+		private boolean open = false;
 
 		SessionWrapper(SocketIOSession session) {
 			this.session = session;
 		}
-
+		
 		/*
 		 * (non-Javadoc)
 		 * @see org.eclipse.jetty.websocket.WebSocket#onConnect(org.eclipse.jetty.websocket.WebSocket.Outbound)
@@ -56,6 +62,8 @@ public class WebSocketTransport extends AbstractTransport {
 		@Override
 		public void onConnect(final Outbound outbound) {
 			this.outbound = outbound;
+	        session.setHeartbeat(maxIdleTime/2);
+	        session.setTimeout(CONNECTION_TIMEOUT);
 		}
 
 		/*
@@ -64,32 +72,35 @@ public class WebSocketTransport extends AbstractTransport {
 		 */
 		@Override
 		public void onDisconnect() {
-			if (connected) {
-				session.onDisconnect(false);
-			}
-			outbound = null;
+			session.onShutdown();
 		}
-
+		
 		/*
 		 * (non-Javadoc)
 		 * @see org.eclipse.jetty.websocket.WebSocket#onMessage(byte, java.lang.String)
 		 */
 		@Override
 		public void onMessage(byte frame, String message) {
-			if (!connected) {
-				if ("~s~".equals(message)) {
-					connected = true;
+			session.startHeartbeatTimer();
+			if (!initiated) {
+				if ("OPEN".equals(message)) {
 					try {
-						outbound.sendMessage(encode(session.getSessionId()));
+						outbound.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.SESSION_ID, session.getSessionId()));
+						open = true;
+						session.onConnect(this);
+						initiated = true;
 					} catch (IOException e) {
 						outbound.disconnect();
+						session.onShutdown();
 					}
-					session.onConnect(this);
 				} else {
 					outbound.disconnect();
+					session.onShutdown();
 				}
 			} else {
-				for(String msg: decode(message)) {
+				List<SocketIOMessage> messages = SocketIOMessage.parse(message);
+				
+				for (SocketIOMessage msg: messages) {
 					session.onMessage(msg);
 				}
 			}
@@ -117,7 +128,13 @@ public class WebSocketTransport extends AbstractTransport {
 		 */
 		@Override
 		public void disconnect() {
-			outbound.disconnect();
+			open = false;
+			try {
+				outbound.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.CLOSE, "close"));
+				outbound.disconnect();
+			} catch (IOException e) {
+				abort();
+			}
 		}
 
 		/*
@@ -126,7 +143,7 @@ public class WebSocketTransport extends AbstractTransport {
 		 */
 		@Override
 		public boolean isOpen() {
-			return outbound.isOpen();
+			return open && outbound.isOpen();
 		}
 
 		/*
@@ -135,10 +152,15 @@ public class WebSocketTransport extends AbstractTransport {
 		 */
 		@Override
 		public void sendMessage(String message) throws SocketIOException {
-			try {
-				outbound.sendMessage(encode(message));
-			} catch (IOException e) {
-				throw new SocketIOException(e);
+			if (isOpen()) {
+				try {
+					outbound.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.TEXT, message));
+				} catch (IOException e) {
+					outbound.disconnect();
+					throw new SocketIOException(e);
+				}
+			} else {
+				throw new SocketIOClosedException();
 			}
 		}
 
@@ -152,6 +174,14 @@ public class WebSocketTransport extends AbstractTransport {
     		response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unexpected request on upgraded WebSocket connection");
     		return;
 		}
+
+		@Override
+		public void abort() {
+			open = false;
+			outbound.disconnect();
+			outbound = null;
+			session.onShutdown();
+		}
 		
 	}
 
@@ -159,6 +189,7 @@ public class WebSocketTransport extends AbstractTransport {
 		wsFactory = new WebSocketFactory();
 		wsFactory.setBufferSize(bufferSize);
 		wsFactory.setMaxIdleTime(maxIdleTime);
+		this.maxIdleTime = maxIdleTime;
 	}
 	
 	@Override
@@ -197,7 +228,6 @@ public class WebSocketTransport extends AbstractTransport {
 	        } else {
 	        	SocketIOSession session = sessionFactory.createSession(inbound);
 		        SessionWrapper wrapper = new SessionWrapper(session);
-		        
 		        wsFactory.upgrade(request,response,wrapper,origin,protocol);
 	        }
 		} else {
