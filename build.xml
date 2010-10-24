@@ -55,20 +55,55 @@
 			<fileset dir="src">
 				<include name="**/*.js"/>
 				<include name="**/*.swf"/>
+				<include name="**/*.html"/>
 			</fileset>
 	    </copy>
 	</target>
 
 	<target name="dist" depends="compile">
 		<jar destfile="dist/socketio-java-${socketio-java.version}.jar">
-			<fileset dir="build/classes">
-				<include name="com/glines/socketio/**/*" />
-			</fileset>
+			<fileset dir="build/classes"/>
 			<manifest>
 		        <attribute name="Implementation-Vendor" value="http://code.google.com/p/socketio-java"/>
 		        <attribute name="Implementation-Title" value="socketio-.java"/>
 		        <attribute name="Implementation-Version" value="${socketio-java.version}"/>
 			</manifest>
 	    </jar>
+	</target>
+	
+	<target name="run-chat">
+		<java fork="true" classname="com.glines.socketio.examples.chat.ChatServer">
+			<jvmarg value="-Dorg.eclipse.jetty.util.log.DEBUG=true"/>
+			<arg value="localhost"/>
+			<arg value="8080"/>
+			<classpath>
+				<pathelement location="dist/socketio-java-${socketio-java.version}.jar"/>
+				<path refid="classpath"/>
+			</classpath>
+		</java>
+	</target>
+
+	<target name="run-echo">
+		<java fork="true" classname="com.glines.socketio.examples.echo.EchoServer">
+			<jvmarg value="-Dorg.eclipse.jetty.util.log.DEBUG=true"/>
+			<arg value="localhost"/>
+			<arg value="8080"/>
+			<classpath>
+				<pathelement location="dist/socketio-java-${socketio-java.version}.jar"/>
+				<path refid="classpath"/>
+			</classpath>
+		</java>
+	</target>
+
+	<target name="run-broadcast">
+		<java fork="true" classname="com.glines.socketio.examples.broadcast.BroadcastServer">
+			<jvmarg value="-Dorg.eclipse.jetty.util.log.DEBUG=true"/>
+			<arg value="localhost"/>
+			<arg value="8080"/>
+			<classpath>
+				<pathelement location="dist/socketio-java-${socketio-java.version}.jar"/>
+				<path refid="classpath"/>
+			</classpath>
+		</java>
 	</target>
 </project>
