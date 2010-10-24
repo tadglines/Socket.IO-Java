@@ -49,13 +49,20 @@ import com.glines.socketio.server.SocketIOSession;
 
 public class FlashSocketTransport extends WebSocketTransport {
 	public static final String TRANSPORT_NAME = "flashsocket";
-	private static final String FLASHFILE_PATH = TRANSPORT_NAME + "/lib/vendor/web-socket-js/WebSocketMain.swf";
- 	private static final String FLASHFILE_NAME = "WebSocketMain.swf";
+	public static final String FLASHPOLICY_SERVER_HOST_KEY = "flashPolicyServerHost";
+	public static final String FLASHPOLICY_SERVER_PORT_KEY = "flashPolicyServerPort";
+	public static final String FLASHPOLICY_DOMAIN_KEY = "flashPolicyDomain";
+	public static final String FLASHPOLICY_PORTS_KEY = "flashPolicyPorts";
+
+	private static final String FLASHFILE_NAME = "WebSocketMain.swf";
+	private static final String FLASHFILE_PATH = TRANSPORT_NAME + "/" + FLASHFILE_NAME;
 	private ServerSocketChannel flashPolicyServer = null;
 	private ExecutorService executor = Executors.newCachedThreadPool();
 	private Future<?> policyAcceptorThread = null;
-	private short httpPort = 8080;
-	private String flashPolicyDomain = "localhost";
+	private String flashPolicyServerHost = null;
+	private short flashPolicyServerPort = 843;
+	private String flashPolicyDomain = null;
+	private String flashPolicyPorts = null;
 
 
 	public FlashSocketTransport(int bufferSize, int maxIdleTime) {
@@ -69,10 +76,19 @@ public class FlashSocketTransport extends WebSocketTransport {
 
 	@Override
 	public void init(ServletConfig config) {
-		try {
-			startFlashPolicyServer();
-		} catch (IOException e) {
-			// Ignore
+		flashPolicyServerHost = config.getInitParameter(FLASHPOLICY_SERVER_HOST_KEY);
+		flashPolicyDomain = config.getInitParameter(FLASHPOLICY_DOMAIN_KEY);
+		flashPolicyPorts = config.getInitParameter(FLASHPOLICY_PORTS_KEY);
+		String port = config.getInitParameter(FLASHPOLICY_SERVER_PORT_KEY);
+		if (port != null) {
+			flashPolicyServerPort = Short.parseShort(port);
+		}
+		if (flashPolicyServerHost != null && flashPolicyDomain != null && flashPolicyPorts != null) {
+			try {
+				startFlashPolicyServer();
+			} catch (IOException e) {
+				// Ignore
+			}
 		}
 	}
 
@@ -101,7 +117,7 @@ public class FlashSocketTransport extends WebSocketTransport {
         		super.handle(request, response, inboundFactory, sessionFactory);
     		} else {
 				response.setContentType("application/x-shockwave-flash");
-				InputStream is = this.getClass().getClassLoader().getResourceAsStream(FLASHFILE_NAME);
+				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/" + FLASHFILE_NAME);
 				OutputStream os = response.getOutputStream();
 				try {
 					IO.copy(is, os);
@@ -121,7 +137,7 @@ public class FlashSocketTransport extends WebSocketTransport {
 		final String POLICY_FILE_REQUEST = "<policy-file-request/>";
 		flashPolicyServer = ServerSocketChannel.open();
 		flashPolicyServer.socket().setReuseAddress(true);
-		flashPolicyServer.socket().bind(new InetSocketAddress("0.0.0.0", 843));
+		flashPolicyServer.socket().bind(new InetSocketAddress(flashPolicyServerHost, flashPolicyServerPort));
 		flashPolicyServer.configureBlocking(true);
 
 		// Spawn a new server acceptor thread, which must accept incoming
@@ -144,9 +160,10 @@ public class FlashSocketTransport extends WebSocketTransport {
 									while ((c = in.read()) != 0 && request.length() <= POLICY_FILE_REQUEST.length()) {
 										request.append((char)c);
 									}
-									if (request.toString().equalsIgnoreCase(POLICY_FILE_REQUEST)) {
+									if (request.toString().equalsIgnoreCase(POLICY_FILE_REQUEST) ||
+										flashPolicyDomain != null && flashPolicyPorts != null) {
 										PrintWriter out = new PrintWriter(s.getOutputStream());
-										out.println("<cross-domain-policy><allow-access-from domain=\""+flashPolicyDomain+"\" to-ports=\""+httpPort+"\" /></cross-domain-policy>");
+										out.println("<cross-domain-policy><allow-access-from domain=\""+flashPolicyDomain+"\" to-ports=\""+flashPolicyPorts+"\" /></cross-domain-policy>");
 										out.write(0);
 										out.flush();
 									}

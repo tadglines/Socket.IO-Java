@@ -37,6 +37,8 @@ import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
+import com.glines.socketio.server.transport.FlashSocketTransport;
+
 public class ChatServer {
 	private static class StaticServlet extends HttpServlet {
 		@Override
@@ -98,7 +100,11 @@ public class ChatServer {
 	    server.addConnector(connector);
 
 	    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-	    context.addServlet(new ServletHolder(new ChatSocketServlet()), "/socket.io/*");
+	    ServletHolder holder = new ServletHolder(new ChatSocketServlet());
+	    holder.setInitParameter(FlashSocketTransport.FLASHPOLICY_SERVER_HOST_KEY, host);
+	    holder.setInitParameter(FlashSocketTransport.FLASHPOLICY_DOMAIN_KEY, host);
+	    holder.setInitParameter(FlashSocketTransport.FLASHPOLICY_PORTS_KEY, ""+ port);
+	    context.addServlet(holder, "/socket.io/*");
 	    context.addServlet(new ServletHolder(new StaticServlet()), "/*");
 
 	    server.setHandler(context);

@@ -109,7 +109,7 @@ public abstract class SocketIOServlet extends GenericServlet {
     	if (transport == null) {
     		if ("GET".equals(request.getMethod()) && "socket.io.js".equals(parts[0])) {
 				response.setContentType("text/javascript");
-				InputStream is = this.getClass().getClassLoader().getResourceAsStream("socket.io.js");
+				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/socket.io.js");
 				OutputStream os = response.getOutputStream();
 				IO.copy(is, os);
 				return;

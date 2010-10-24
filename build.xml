@@ -30,6 +30,10 @@
 		<fileset dir="WebContent/WEB-INF/lib">
 			<include name="*.jar"/>
 		</fileset>
+		<fileset dir="C:/Software/gwt-2.0.4">
+			<include name="gwt-dev.jar"/>
+			<include name="gwt-user.jar"/>
+		</fileset>
 	</path>
 
 	<target name="init">
@@ -65,7 +69,20 @@
 			<fileset dir="build/classes"/>
 			<manifest>
 		        <attribute name="Implementation-Vendor" value="http://code.google.com/p/socketio-java"/>
-		        <attribute name="Implementation-Title" value="socketio-.java"/>
+		        <attribute name="Implementation-Title" value="socketio-java"/>
+		        <attribute name="Implementation-Version" value="${socketio-java.version}"/>
+			</manifest>
+	    </jar>
+
+		<jar destfile="dist/socketio-java-src-${socketio-java.version}.jar">
+			<fileset dir="src">
+				<exclude name="**/*.js"/>
+				<exclude name="**/*.swf"/>
+				<exclude name="**/*.html"/>
+			</fileset>
+			<manifest>
+		        <attribute name="Implementation-Vendor" value="http://code.google.com/p/socketio-java"/>
+		        <attribute name="Implementation-Title" value="socketio-java Source"/>
 		        <attribute name="Implementation-Version" value="${socketio-java.version}"/>
 			</manifest>
 	    </jar>
@@ -74,7 +91,7 @@
 	<target name="run-chat">
 		<java fork="true" classname="com.glines.socketio.examples.chat.ChatServer">
 			<jvmarg value="-Dorg.eclipse.jetty.util.log.DEBUG=true"/>
-			<arg value="localhost"/>
+			<arg value="0.0.0.0"/>
 			<arg value="8080"/>
 			<classpath>
 				<pathelement location="dist/socketio-java-${socketio-java.version}.jar"/>

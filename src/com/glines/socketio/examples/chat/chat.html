@@ -39,7 +39,6 @@
         return msg.replace(/</g, '&lt;').replace(/>/g, '&gt;');
       };
       
-      io.setPath('/socket.io/flashsocket/');
       var socket = new io.Socket(null, {});
       socket.connect();
       socket.on('message', function(obj){
