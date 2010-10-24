@@ -38,8 +38,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import javax.servlet.ServletConfig;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
+import org.eclipse.jetty.util.IO;
 
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOSession;
@@ -47,7 +50,7 @@ import com.glines.socketio.server.SocketIOSession;
 public class FlashSocketTransport extends WebSocketTransport {
 	public static final String TRANSPORT_NAME = "flashsocket";
 	private static final String FLASHFILE_PATH = TRANSPORT_NAME + "/lib/vendor/web-socket-js/WebSocketMain.swf";
-  	private static final String FLASHFILE_NAME = "WebSocketMain.swf";
+ 	private static final String FLASHFILE_NAME = "WebSocketMain.swf";
 	private ServerSocketChannel flashPolicyServer = null;
 	private ExecutorService executor = Executors.newCachedThreadPool();
 	private Future<?> policyAcceptorThread = null;
@@ -65,7 +68,7 @@ public class FlashSocketTransport extends WebSocketTransport {
 	}
 
 	@Override
-	public void init() {
+	public void init(ServletConfig config) {
 		try {
 			startFlashPolicyServer();
 		} catch (IOException e) {
@@ -100,13 +103,10 @@ public class FlashSocketTransport extends WebSocketTransport {
 				response.setContentType("application/x-shockwave-flash");
 				InputStream is = this.getClass().getClassLoader().getResourceAsStream(FLASHFILE_NAME);
 				OutputStream os = response.getOutputStream();
-				byte[] data = new byte[8192];
-				int nread = 0;
-				while ((nread = is.read(data)) > 0) {
-					os.write(data, 0, nread);
-					if (nread < data.length) {
-						break;
-					}
+				try {
+					IO.copy(is, os);
+				} catch (IOException e) {
+					// TODO: Do we care?
 				}
     		}
     	} else {

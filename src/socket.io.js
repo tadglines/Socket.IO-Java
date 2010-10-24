@@ -117,22 +117,13 @@ if (typeof window != 'undefined'){
 
 	Transport.prototype.disconnect = function(){
 		this.disconnecting = true;
-		this.rawsend(':2:5:close');
+		this.rawsend('~3~5~close');
 		this._disconnect();
 	};
 
 	encodeMessage = function(message){
-		if (Object.prototype.toString.call(message) == '[object Object]'){
-			if (!('JSON' in window)){
-				if ('console' in window && console.error) console.error('Trying to encode as JSON, but JSON.stringify is missing.');
-				return '{ "$error": "Invalid message" }';
-			}
-			var str = JSON.stringify(message);
-			return ':6:' + str.length + ':' + str;
-		} else {
-			var str = String(message);
-			return ':5:' + str.length + ':' + str;
-		}
+		var str = String(message);
+		return '~6~' + str.length + '~' + str;
 	};
 	
 	Transport.prototype._encode = function(messages){
@@ -148,7 +139,7 @@ if (typeof window != 'undefined'){
 	Transport.prototype._decode = function(data){
 		var messages = [], number, n, opcode;
 		do {
-			if (data.substr(0, 1) !== ':') return messages;
+			if (data.substr(0, 1) !== '~') return messages;
 			data = data.substr(1);
 			number = '', n = '';
 			for (var i = 0, l = data.length; i < l; i++){
@@ -163,7 +154,7 @@ if (typeof window != 'undefined'){
 			}
 			opcode = number;
 
-			if (data.substr(0, 1) !== ':') return messages;
+			if (data.substr(0, 1) !== '~') return messages;
 			data = data.substr(1);
 			number = '', n = '';
 			for (var i = 0, l = data.length; i < l; i++){
@@ -176,7 +167,7 @@ if (typeof window != 'undefined'){
 					break;
 				} 
 			}
-			if (data.substr(0, 1) !== ':') return messages;
+			if (data.substr(0, 1) !== '~') return messages;
 			data = data.substr(1);
 			messages.push({ opcode: opcode, data: data.substr(0, number)}); // here
 			data = data.substr(number);
@@ -203,7 +194,7 @@ if (typeof window != 'undefined'){
 	};
 	
 	Transport.prototype._onTimeout = function(){
-		this._onDisconnect();
+		this._disconnect();
 	};
 	
 	Transport.prototype._onMessage = function(message){
@@ -215,18 +206,28 @@ if (typeof window != 'undefined'){
 				this._onDisconnect();
 			}
 		} else if (message.opcode == 2){
-			this._onDisconnect();
+			hg_interval = Number(message.data);
+			if (message.data == hg_interval) {
+				this.options.timeout = hg_interval*2; // Set timeout to twice the new heartbeat interval
+				this._setTimeout();
+			}
 		} else if (message.opcode == 3){
+			this._onDisconnect();
+		} else if (message.opcode == 4){
 			this._onPing(message.data);
 		} else if (message.opcode == 6){
-			this.base._onMessage(JSON.parse(message.data));
+//			if (message.data.substr(0,3) == '~j~') {
+//				this.base._onMessage(JSON.parse(message.data.substr(3)));
+//			} else {
+				this.base._onMessage(message.data);
+//			}
 		} else {
-			this.base._onMessage(message.data);
+			// For now we'll ignore other opcodes.
 		}
 	},
 	
 	Transport.prototype._onPing = function(data){
-		this.send(':4:' + data.length + ':' + data); // echo
+		this.rawsend('~5~' + data.length + '~' + data); // echo
 	};
 	
 	Transport.prototype._onConnect = function(){
@@ -305,9 +306,12 @@ if (typeof window != 'undefined'){
 	
 	XHR.prototype._checkSend = function(){
 		if (!this._posting && this._sendBuffer.length){
-			var encoded = this._encode(this._sendBuffer);
+			var data = '';
+			for (var i = 0, l = this._sendBuffer.length; i < l; i++){
+				data += this._sendBuffer[i];
+			}
 			this._sendBuffer = [];
-			this._send(encoded);
+			this._send(data);
 		} else if (this.disconnecting) {
 			this._disconnect();
 		}
@@ -669,6 +673,9 @@ if (typeof window != 'undefined'){
 				self._onData(this.responseText);
 				self._get();
 			};
+			this._xhr.onerror = function(){
+				self._onDisconnect();
+			};
 		} else {
 			this._xhr.onreadystatechange = function(){
 				var status;
@@ -829,8 +836,7 @@ JSONPPolling.xdomainCheck = function(){
 			document: document,
 			port: document.location.port || 80,
 			resource: 'socket.io',
-//			transports: ['websocket', 'flashsocket', 'htmlfile', 'xhr-multipart', 'xhr-polling', 'jsonp-polling'],
-			transports: ['websocket', 'flashsocket', 'xhr-polling'],
+			transports: ['websocket', 'flashsocket', 'htmlfile', 'xhr-multipart', 'xhr-polling', 'jsonp-polling'],
 			transportOptions: {
 				'xhr-polling': {
 					timeout: 25000 // based on polling duration default
@@ -1792,10 +1798,10 @@ ASProxy.prototype =
       try {
         if (this.onmessage) {
           var e;
-          if (window.MessageEvent && !window.opera) {
+          if (window.MessageEvent) {
             e = document.createEvent("MessageEvent");
             e.initMessageEvent("message", false, false, data, null, null, window, null);
-          } else { // IE and Opera, the latter one truncates the data parameter after any 0x00 bytes
+          } else { // IE
             e = {data: data};
           }
           this.onmessage(e);

@@ -25,6 +25,7 @@ package com.glines.socketio.server;
 
 import java.io.IOException;
 
+import javax.servlet.ServletConfig;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -34,10 +35,10 @@ public interface Transport {
 	 */
 	String getName();
 
-	void init();
+	void init(ServletConfig config);
 	
 	void destroy();
-	
+
 	void handle(HttpServletRequest request, HttpServletResponse response,
 			SocketIOInbound.Factory inboundFactory, SocketIOSession.Factory sessionFactory) throws IOException;
 }

@@ -53,6 +53,8 @@ public class WebSocketTransport extends AbstractTransport {
 
 		SessionWrapper(SocketIOSession session) {
 			this.session = session;
+	        session.setHeartbeat(maxIdleTime/2);
+	        session.setTimeout(CONNECTION_TIMEOUT);
 		}
 		
 		/*
@@ -62,8 +64,6 @@ public class WebSocketTransport extends AbstractTransport {
 		@Override
 		public void onConnect(final Outbound outbound) {
 			this.outbound = outbound;
-	        session.setHeartbeat(maxIdleTime/2);
-	        session.setTimeout(CONNECTION_TIMEOUT);
 		}
 
 		/*
@@ -86,6 +86,7 @@ public class WebSocketTransport extends AbstractTransport {
 				if ("OPEN".equals(message)) {
 					try {
 						outbound.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.SESSION_ID, session.getSessionId()));
+						outbound.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.HEARTBEAT_INTERVAL, "" + session.getHeartbeat()));
 						open = true;
 						session.onConnect(this);
 						initiated = true;
@@ -146,15 +147,12 @@ public class WebSocketTransport extends AbstractTransport {
 			return open && outbound.isOpen();
 		}
 
-		/*
-		 * (non-Javadoc)
-		 * @see com.glines.socketio.SocketIOInbound.SocketIOOutbound#sendMessage(java.lang.String)
-		 */
 		@Override
-		public void sendMessage(String message) throws SocketIOException {
+		public void sendMessage(SocketIOMessage.Type type, String data) throws SocketIOException {
 			if (isOpen()) {
+				System.out.println("Session["+session.getSessionId()+"]: sendMessage: [" + type + "]: " + data);
 				try {
-					outbound.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.TEXT, message));
+					outbound.sendMessage(SocketIOMessage.encode(type, data));
 				} catch (IOException e) {
 					outbound.disconnect();
 					throw new SocketIOException(e);
@@ -162,6 +160,21 @@ public class WebSocketTransport extends AbstractTransport {
 			} else {
 				throw new SocketIOClosedException();
 			}
+		}
+
+		@Override
+		public void sendMessage(SocketIOMessage message) throws SocketIOException {
+			sendMessage(message.getType(), message.getData());
+		}
+		
+		
+		/*
+		 * (non-Javadoc)
+		 * @see com.glines.socketio.SocketIOInbound.SocketIOOutbound#sendMessage(java.lang.String)
+		 */
+		@Override
+		public void sendMessage(String message) throws SocketIOException {
+			sendMessage(SocketIOMessage.Type.TEXT, message);
 		}
 
 		/*

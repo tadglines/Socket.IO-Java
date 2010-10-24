@@ -84,11 +84,12 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		}
 
 		private void onTimeout() {
+			System.out.println("Session["+sessionId+"]: onTimeout");
 			if (!timedout) {
 				timedout = true;
 				state = SessionState.CLOSED;
+				onDisconnect(DisconnectReason.TIMEOUT);
 				handler.abort();
-				onDisconnect(DisconnectReason.NORMAL);
 			}
 		}
 		
@@ -115,8 +116,9 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		
 		private void sendPing() {
 			String data = "" + pingId.incrementAndGet();
+			System.out.println("Session["+sessionId+"]: sendPing " + data);
 			try {
-				handler.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.PING, data));
+				handler.sendMessage(SocketIOMessage.Type.PING, data);
 			} catch (SocketIOException e) {
 				handler.abort();
 			}
@@ -150,24 +152,41 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		}
 
 		@Override
+		public long getHeartbeat() {
+			return hbDelay;
+		}
+		
+		@Override
 		public void setTimeout(long timeout) {
 			this.timeout = timeout;
 		}
 
 		@Override
+		public long getTimeout() {
+			return timeout;
+		}
+
+		@Override
 		public void onMessage(SocketIOMessage message) {
 			switch (message.getType()) {
+			case SESSION_ID:
+			case HEARTBEAT_INTERVAL:
+				// Ignore these two messages types as they are only intended to be from server to client.
+				break;
 			case CLOSE:
+				System.out.println("Session["+sessionId+"]: onClose: " + message.getData());
 				onClose(message.getData());
 				break;
 			case PING:
+				System.out.println("Session["+sessionId+"]: onPing: " + message.getData());
 				onPing(message.getData());
 				break;
 			case PONG:
+				System.out.println("Session["+sessionId+"]: onPong: " + message.getData());
 				onPong(message.getData());
 				break;
 			case TEXT:
-			case JSON:
+				System.out.println("Session["+sessionId+"]: onMessage: " + message.getData());
 				onMessage(message.getData());
 				break;
 			default:
@@ -187,7 +206,6 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 
 		@Override
 		public void onPong(String data) {
-			// If data matched that sent in ping, clear heartbeat timer.
 			String ping_data = "" + pingId.get();
 			if (ping_data.equals(data)) {
 				clearTimeoutTimer();
@@ -245,6 +263,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 
 		@Override
 		public void onDisconnect(DisconnectReason reason) {
+			System.out.println("Session["+sessionId+"]: onDisconnect: " + reason);
 			clearTimeoutTimer();
 			clearHeartbeatTimer();
 			if (inbound != null) {
@@ -260,6 +279,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		
 		@Override
 		public void onShutdown() {
+			System.out.println("Session["+sessionId+"]: onShutdown");
 			if (inbound != null) {
 				onDisconnect(DisconnectReason.ERROR);
 			}

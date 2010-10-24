@@ -47,6 +47,8 @@ public interface SocketIOSession {
 
 	interface SessionTransportHandler extends SocketIOInbound.SocketIOOutbound {
 		void handle(HttpServletRequest request, HttpServletResponse response, SocketIOSession session) throws IOException;
+		void sendMessage(SocketIOMessage.Type type, String data) throws SocketIOException;
+		void sendMessage(SocketIOMessage message) throws SocketIOException;
 		/**
 		 * Cause connection and all activity to be aborted and all resources to be released.
 		 * The handler is expected to call the session's onShutdown() when it is finished.
@@ -71,7 +73,9 @@ public interface SocketIOSession {
 	SessionTransportHandler getTransportHandler();
 
 	void setHeartbeat(long delay);
+	long getHeartbeat();
 	void setTimeout(long timeout);
+	long getTimeout();
 
 	void startTimeoutTimer();
 	void clearTimeoutTimer();

@@ -23,6 +23,7 @@
 
 package com.glines.socketio.server.transport;
 
+import javax.servlet.ServletConfig;
 import javax.servlet.http.HttpServletRequest;
 
 import com.glines.socketio.server.Transport;
@@ -41,7 +42,7 @@ public abstract class AbstractTransport implements Transport {
 	}
 
 	@Override
-	public void init() {
+	public void init(ServletConfig config) {
 		
 	}
 

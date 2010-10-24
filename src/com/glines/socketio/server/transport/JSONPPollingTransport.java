@@ -32,8 +32,9 @@ import javax.servlet.http.HttpServletResponse;
 import com.glines.socketio.common.SocketIOMessage;
 import com.glines.socketio.server.SocketIOSession;
 
-public class XHRPollingTransport extends XHRTransport {
-	public static final String TRANSPORT_NAME = "xhr-polling";
+public class JSONPPollingTransport extends XHRTransport {
+	public static final String TRANSPORT_NAME = "jsonp-polling";
+	private long jsonpIndex = -1;
 
 	protected class XHRPollingSessionHelper extends XHRSessionHelper {
 
@@ -42,26 +43,35 @@ public class XHRPollingTransport extends XHRTransport {
 		}
 
 		protected void startSend(HttpServletResponse response) throws IOException {
-			response.setContentType("text/plain; charset=UTF-8");
+			response.setContentType("text/javascript; charset=UTF-8");
+			response.getOutputStream().print("io.JSONP["+ jsonpIndex +"]._('");
 		}
 
 		@Override
 		protected void writeData(ServletResponse response, String data) throws IOException {
 			response.getOutputStream().print(data);
+		}
+
+		protected void finishSend(ServletResponse response) throws IOException {
+			response.getOutputStream().print("');");
 			response.flushBuffer();
 		}
 
-		protected void finishSend(ServletResponse response) throws IOException {};
-
 		protected void customConnect(HttpServletRequest request,
 				HttpServletResponse response) throws IOException {
+	    	String path = request.getPathInfo();
+	    	if (path.startsWith("/")) path = path.substring(1);
+	    	String[] parts = path.split("/");
+	    	if (parts.length >= 4) {
+	    		jsonpIndex = Integer.parseInt(parts[3]);
+	    	}
 			startSend(response);
 			writeData(response, SocketIOMessage.encode(SocketIOMessage.Type.SESSION_ID, session.getSessionId()));
 			writeData(response, SocketIOMessage.encode(SocketIOMessage.Type.HEARTBEAT_INTERVAL, "" + REQUEST_TIMEOUT));
 		}
 	}
 	
-	public XHRPollingTransport(int bufferSize, int maxIdleTime) {
+	public JSONPPollingTransport(int bufferSize, int maxIdleTime) {
 		super(bufferSize, maxIdleTime);
 	}
 

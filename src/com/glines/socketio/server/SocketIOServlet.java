@@ -36,8 +36,13 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.util.IO;
+
 import com.glines.socketio.server.transport.FlashSocketTransport;
+import com.glines.socketio.server.transport.HTMLFileTransport;
+import com.glines.socketio.server.transport.JSONPPollingTransport;
 import com.glines.socketio.server.transport.WebSocketTransport;
+import com.glines.socketio.server.transport.XHRMultipartTransport;
 import com.glines.socketio.server.transport.XHRPollingTransport;
 
 /**
@@ -60,15 +65,21 @@ public abstract class SocketIOServlet extends GenericServlet {
 		int maxIdleTime = str==null ? MAX_IDLE_TIME_DEFAULT : Integer.parseInt(str);
 
 		sessionManager = new SocketIOSessionManager();
-		WebSocketTransport wst = new WebSocketTransport(bufferSize, maxIdleTime);
-		FlashSocketTransport fst = new FlashSocketTransport(bufferSize, maxIdleTime);
-		XHRPollingTransport xhrpt = new XHRPollingTransport(bufferSize, maxIdleTime);
-		transports.put(wst.getName(), wst);
-		transports.put(fst.getName(), fst);
-		transports.put(xhrpt.getName(), xhrpt);
+		WebSocketTransport websocketTransport = new WebSocketTransport(bufferSize, maxIdleTime);
+		FlashSocketTransport flashsocketTransport = new FlashSocketTransport(bufferSize, maxIdleTime);
+		HTMLFileTransport htmlFileTransport = new HTMLFileTransport(bufferSize, maxIdleTime);
+		XHRMultipartTransport xhrMultipartTransport = new XHRMultipartTransport(bufferSize, maxIdleTime);
+		XHRPollingTransport xhrPollingTransport = new XHRPollingTransport(bufferSize, maxIdleTime);
+		JSONPPollingTransport jsonpPollingTransport = new JSONPPollingTransport(bufferSize, maxIdleTime);
+		transports.put(websocketTransport.getName(), websocketTransport);
+		transports.put(flashsocketTransport.getName(), flashsocketTransport);
+		transports.put(htmlFileTransport.getName(), htmlFileTransport);
+		transports.put(xhrMultipartTransport.getName(), xhrMultipartTransport);
+		transports.put(xhrPollingTransport.getName(), xhrPollingTransport);
+		transports.put(jsonpPollingTransport.getName(), jsonpPollingTransport);
 		
 		for (Transport t: transports.values()) {
-			t.init();
+			t.init(this.getServletConfig());
 		}
 	}
 
@@ -100,14 +111,7 @@ public abstract class SocketIOServlet extends GenericServlet {
 				response.setContentType("text/javascript");
 				InputStream is = this.getClass().getClassLoader().getResourceAsStream("socket.io.js");
 				OutputStream os = response.getOutputStream();
-				byte[] data = new byte[8192];
-				int nread = 0;
-				while ((nread = is.read(data)) > 0) {
-					os.write(data, 0, nread);
-					if (nread < data.length) {
-						break;
-					}
-				}
+				IO.copy(is, os);
 				return;
     		} else {
 	    		response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown SocketIO transport");

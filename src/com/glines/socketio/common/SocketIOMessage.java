@@ -4,14 +4,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SocketIOMessage {
+	public static final char SEPERATOR_CHAR = '~';
 	public enum Type {
 		UNKNOWN(-1),
 		SESSION_ID(1),
-		CLOSE(2),
-		PING(3),
-		PONG(4),
-		TEXT(5),
-		JSON(6);
+		HEARTBEAT_INTERVAL(2),
+		CLOSE(3),
+		PING(4),
+		PONG(5),
+		TEXT(6);
 
 		private int value;
 		
@@ -28,15 +29,15 @@ public class SocketIOMessage {
 			case 1:
 				return SESSION_ID;
 			case 2:
-				return CLOSE;
+				return HEARTBEAT_INTERVAL;
 			case 3:
-				return PING;
+				return CLOSE;
 			case 4:
-				return PONG;
+				return PING;
 			case 5:
-				return TEXT;
+				return PONG;
 			case 6:
-				return JSON;
+				return TEXT;
 			default:
 				return UNKNOWN;
 			}
@@ -57,9 +58,9 @@ public class SocketIOMessage {
 		int idx = 0;
 
 		// Parse the data and silently ignore any part that fails to parse properly.
-		while (data.length() > idx && data.charAt(idx) == ':') {
+		while (data.length() > idx && data.charAt(idx) == SEPERATOR_CHAR) {
 			int start = idx + 1;
-			int end = data.indexOf(':', start);
+			int end = data.indexOf(SEPERATOR_CHAR, start);
 
 			if (-1 == end || start == end || !isNumber(data, start, end)) {
 				break;
@@ -68,7 +69,7 @@ public class SocketIOMessage {
 			int type = Integer.parseInt(data.substring(start, end));
 
 			start = end + 1;
-			end = data.indexOf(':', start);
+			end = data.indexOf(SEPERATOR_CHAR, start);
 
 			if (-1 == end || start == end || !isNumber(data, start, end)) {
 				break;
@@ -92,11 +93,11 @@ public class SocketIOMessage {
 	
 	public static String encode(Type type, String data) {
 		StringBuilder str = new StringBuilder(data.length() + 16);
-		str.append(':');
+		str.append(SEPERATOR_CHAR);
 		str.append(type.value());
-		str.append(':');
+		str.append(SEPERATOR_CHAR);
 		str.append(data.length());
-		str.append(':');
+		str.append(SEPERATOR_CHAR);
 		str.append(data);
 		return str.toString();
 	}
