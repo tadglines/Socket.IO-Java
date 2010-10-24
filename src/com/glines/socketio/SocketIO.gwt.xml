@@ -1,0 +1,8 @@
+<module>
+    <inherits name="com.google.gwt.core.Core"/>
+    <script src="/socket.io/socket.io.js"/>
+    <source path="client">
+    	<exclude name="SocketIOConnectionFactory.java"/>
+    	<exclude name="jre/**/*"/>
+    </source>
+</module>
