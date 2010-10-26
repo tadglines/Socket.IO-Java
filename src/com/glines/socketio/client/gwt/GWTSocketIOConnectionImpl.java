@@ -5,8 +5,8 @@ import com.google.gwt.core.client.JavaScriptObject;
 
 public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 	private static final class SocketIOImpl extends JavaScriptObject {
-		public static native SocketIOImpl create(GWTSocketIOConnectionImpl impl) /*-{
-			var socket = new $wnd.io.Socket(null, {});
+		public static native SocketIOImpl create(GWTSocketIOConnectionImpl impl, String host, String port) /*-{
+			var socket = new $wnd.io.Socket(host, port != null ? {port: port} : {});
 			socket.on('connect', $entry(function() {
       			impl.@com.glines.socketio.client.gwt.GWTSocketIOConnectionImpl::onConnect()();
     		}));
@@ -19,7 +19,6 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
     		return socket;
 		}-*/;
 
-		@SuppressWarnings("unused")
 		protected SocketIOImpl() {
 	    }
 
@@ -28,42 +27,65 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 	    public native void disconnect() /*-{this.disconnect();}-*/;
 
 	    public native void send(String data) /*-{this.send(data);}-*/;
+
+	    public native boolean isConnecting() /*-{return this.connecting;}-*/;
+
+	    public native boolean isConnected() /*-{return this.connected;}-*/;
+
+	    public native boolean isDisconnecting() /*-{return this.disconnecting;}-*/;
+
+	    public native boolean wasConnecting() /*-{return this.wasConnecting;}-*/;
+
+	    public native boolean wasConnected() /*-{return this.wasConnected;}-*/;
 	}
 	
 	
 	private final SocketIOConnection.SocketIOConnectionListener listener;
+	private final String host;
+	private final String port;
 	private SocketIOImpl socket = null;
+	private ConnectionState state = ConnectionState.CLOSED;
 
-	GWTSocketIOConnectionImpl(SocketIOConnection.SocketIOConnectionListener listener) {
+	GWTSocketIOConnectionImpl(SocketIOConnection.SocketIOConnectionListener listener,
+			String host, short port) {
 		this.listener = listener;
+		this.host = host;
+		if (port > 0) {
+			this.port = "" + port;
+		} else {
+			this.port = null;
+		}
 	}
 
 	@Override
 	public void connect() {
-		if (socket != null) {
-			throw new IllegalStateException("Already connected");
+		if (socket == null) {
+			socket = SocketIOImpl.create(this, host, port);
 		}
-		socket = SocketIOImpl.create(this);
+
+		if (ConnectionState.CLOSED != state) {
+			throw new IllegalStateException("Invalid connection state X " + state);
+		}
+		state = ConnectionState.CONNECTING;
 		socket.connect();
 	}
 	
 	@Override
 	public void disconnect() {
-		if (socket == null) {
-			throw new IllegalStateException("Not connected");
+		if (ConnectionState.OPEN == state) {
+			state = ConnectionState.CLOSING;
+			socket.disconnect();
 		}
-		socket.disconnect();
-		socket = null;
 	}
 
 	@Override
-	public boolean isOpen() {
-		return socket != null;
+	public ConnectionState getConnectionState() {
+		return state;
 	}
 
 	@Override
 	public void sendMessage(String message) {
-		if (socket == null) {
+		if (ConnectionState.OPEN != state) {
 			throw new IllegalStateException("Not connected");
 		}
 		socket.send(message);
@@ -71,6 +93,7 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 
 	@SuppressWarnings("unused")
 	private void onConnect() {
+		state = ConnectionState.OPEN;
 		try {
 			listener.onConnect();
 		} catch (Throwable t) {
@@ -80,9 +103,9 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 
 	@SuppressWarnings("unused")
 	private void onDisconnect() {
-		socket = null;
+		state = ConnectionState.CLOSED;
 		try {
-			listener.onDisconnect();
+			listener.onDisconnect(socket.wasConnecting());
 		} catch (Throwable t) {
 			// Ignore
 		}

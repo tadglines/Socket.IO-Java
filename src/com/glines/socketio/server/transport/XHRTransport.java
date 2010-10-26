@@ -24,11 +24,13 @@ import com.glines.socketio.server.SocketIOInbound.Factory;
 import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
 
 public abstract class XHRTransport extends AbstractHttpTransport {
-	public static final String CONTINUATION_KEY = "com.glines.socketio.server.transport.XHRTransport.Continuation";
+	public static final String CONTINUATION_KEY =
+		"com.glines.socketio.server.transport.XHRTransport.Continuation";
 	private final int bufferSize;
 	private final int maxIdleTime;
 
-	protected abstract class XHRSessionHelper implements SessionTransportHandler, ContinuationListener {
+	protected abstract class XHRSessionHelper
+			implements SessionTransportHandler, ContinuationListener {
 		protected final SocketIOSession session;
 		private final TransportBuffer buffer = new TransportBuffer(bufferSize);
 		private boolean is_open = false;
@@ -67,9 +69,11 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		}
 
 		@Override
-		public void sendMessage(SocketIOMessage.Type type, String message) throws SocketIOException {
+		public void sendMessage(SocketIOMessage.Type type, String message)
+				throws SocketIOException {
 			if (is_open) {
-				System.out.println("Session["+session.getSessionId()+"]: sendMessage: [" + type + "]: " + message);
+				System.out.println("Session["+session.getSessionId()+"]: " +
+						"sendMessage: [" + type + "]: " + message);
 				if (continuation != null && continuation.isInitial()) {
 					List<String> messages = buffer.drainMessages();
 					messages.add(SocketIOMessage.encode(type, message));
@@ -87,7 +91,8 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 					}
 				} else {
 					String data = SocketIOMessage.encode(type, message);
-					if (continuation != null && continuation.isSuspended() && buffer.getAvailableBytes() < data.length()) {
+					if (continuation != null && continuation.isSuspended() &&
+							buffer.getAvailableBytes() < data.length()) {
 						continuation.resume();
 					}
 					if (buffer.putMessage(data, maxIdleTime) == false) {
@@ -123,10 +128,26 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 					response.sendError(HttpServletResponse.SC_NOT_FOUND);
 				} else {
 					Continuation cont = (Continuation)request.getAttribute(CONTINUATION_KEY);
-					if (cont != null && cont != continuation) {
-						return;
-					}
 					if (continuation != null) {
+						if (cont != continuation) {
+							if (cont != null) {
+								/*
+								 * If the request continuation is non-null and doesn't match the
+								 * active continuation then it's likely this is a result of an old
+								 * continuation being resumes one last time.
+								 * Just return and the continuation will be no more.
+								 */
+								return;
+							} else {
+								/*
+								 * If the request has no continuation but there is an active
+								 * continuation for the session then this request is probably due
+								 * to the client making spurious requests.
+								 * Return with no results.
+								 */
+								return;
+							}
+						}
 						List<String> messages = buffer.drainMessages();
 						if (messages.size() > 0) {
 							StringBuilder data = new StringBuilder();
@@ -145,6 +166,15 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 							continuation.suspend(response);
 						}
 					} else if (!isConnectionPersistant) {
+						if (cont != null) {
+							/*
+							 * If the request continuation is not-null and and there is no
+							 * active continuation then it's likely this is a result of an old
+							 * continuation being resumes one last time.
+							 * Just return and the continuation will be no more.
+							 */
+							return;
+						}
 						if (!buffer.isEmpty()) {
 							List<String> messages = buffer.drainMessages();
 							if (messages.size() > 0) {

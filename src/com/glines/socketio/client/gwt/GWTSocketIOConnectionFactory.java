@@ -9,7 +9,8 @@ public class GWTSocketIOConnectionFactory {
 	 * @param port
 	 * @return
 	 */
-	public static SocketIOConnection create(SocketIOConnection.SocketIOConnectionListener listener) {
-		return new GWTSocketIOConnectionImpl(listener);
+	public static SocketIOConnection create(SocketIOConnection.SocketIOConnectionListener listener,
+		String host, short port) {
+		return new GWTSocketIOConnectionImpl(listener, host, port);
 	}
 }
