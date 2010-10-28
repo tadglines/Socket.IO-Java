@@ -26,6 +26,8 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 
 	    public native void disconnect() /*-{this.disconnect();}-*/;
 
+	    public native void _disconnect() /*-{this.transport._disconnect();}-*/;
+
 	    public native void send(String data) /*-{this.send(data);}-*/;
 
 	    public native boolean isConnecting() /*-{return this.connecting;}-*/;
@@ -75,6 +77,9 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 		if (ConnectionState.OPEN == state) {
 			state = ConnectionState.CLOSING;
 			socket.disconnect();
+		} else if (ConnectionState.CONNECTING == state) {
+			state = ConnectionState.CLOSED;
+			socket._disconnect();
 		}
 	}
 
@@ -96,7 +101,7 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 		state = ConnectionState.OPEN;
 		try {
 			listener.onConnect();
-		} catch (Throwable t) {
+		} catch (Exception e) {
 			// Ignore
 		}
 	}
@@ -106,7 +111,7 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 		state = ConnectionState.CLOSED;
 		try {
 			listener.onDisconnect(socket.wasConnecting());
-		} catch (Throwable t) {
+		} catch (Exception e) {
 			// Ignore
 		}
 	}
@@ -115,7 +120,7 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 	private void onMessage(String message) {
 		try {
 			listener.onMessage(message);
-		} catch (Throwable t) {
+		} catch (Exception e) {
 			// Ignore
 		}
 	}
