@@ -14,14 +14,16 @@ import org.eclipse.jetty.continuation.ContinuationSupport;
 import org.eclipse.jetty.util.IO;
 import org.eclipse.jetty.util.URIUtil;
 
-import com.glines.socketio.common.SocketIOMessage;
+import com.glines.socketio.common.CloseType;
+import com.glines.socketio.common.ConnectionState;
+import com.glines.socketio.common.DisconnectReason;
+import com.glines.socketio.common.SocketIOException;
 import com.glines.socketio.server.SocketIOClosedException;
-import com.glines.socketio.server.SocketIOException;
 import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.SocketIOInbound.DisconnectReason;
-import com.glines.socketio.server.SocketIOInbound.Factory;
 import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
+import com.glines.socketio.server.Transport;
 
 public abstract class XHRTransport extends AbstractHttpTransport {
 	public static final String CONTINUATION_KEY =
@@ -57,26 +59,31 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		@Override
 		public void disconnect() {
 			try {
-				sendMessage(SocketIOMessage.Type.CLOSE, "close");
+				sendMessage(SocketIOFrame.Type.CLOSE, "close");
 			} catch (SocketIOException e) {
 				abort();
 			}
 		}
 
 		@Override
-		public boolean isOpen() {
-			return is_open;
+		public void close(CloseType closeType) {
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
-		public void sendMessage(SocketIOMessage.Type type, String message)
+		public ConnectionState getconnectionState() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void sendMessage(SocketIOFrame.Type type, String message)
 				throws SocketIOException {
 			if (is_open) {
 				System.out.println("Session["+session.getSessionId()+"]: " +
 						"sendMessage: [" + type + "]: " + message);
 				if (continuation != null && continuation.isInitial()) {
 					List<String> messages = buffer.drainMessages();
-					messages.add(SocketIOMessage.encode(type, message));
+					messages.add(SocketIOFrame.encode(type, message));
 					if (messages.size() > 0) {
 						StringBuilder data = new StringBuilder();
 						for (String msg: messages) {
@@ -90,7 +97,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 						}
 					}
 				} else {
-					String data = SocketIOMessage.encode(type, message);
+					String data = SocketIOFrame.encode(type, message);
 					if (continuation != null && continuation.isSuspended() &&
 							buffer.getAvailableBytes() < data.length()) {
 						continuation.resume();
@@ -110,13 +117,21 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		}
 
 		@Override
-		public void sendMessage(SocketIOMessage message) throws SocketIOException {
+		public void sendMessage(SocketIOFrame message) throws SocketIOException {
 			sendMessage(message.getType(), message.getData());
 		}
 
 		@Override
 		public void sendMessage(String message) throws SocketIOException {
-			sendMessage(SocketIOMessage.Type.TEXT, message);
+			sendMessage(SocketIOFrame.Type.TEXT, message);
+		}
+
+		@Override
+		public void sendMessage(int messageType, Object message)
+				throws SocketIOException {
+			if (messageType != SocketIOFrame.TEXT_MESSAGE_TYPE || message instanceof String)
+				throw new UnsupportedOperationException();
+			sendMessage(SocketIOFrame.Type.TEXT, (String)message);
 		}
 
 		@Override
@@ -190,6 +205,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 						} else {
 							session.clearTimeoutTimer();
 							request.setAttribute(SESSION_KEY, session);
+							response.setBufferSize(bufferSize);
 							continuation = ContinuationSupport.getContinuation(request);
 							continuation.addContinuationListener(this);
 							continuation.setTimeout(REQUEST_TIMEOUT);
@@ -208,10 +224,10 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 					if (size == 0) {
 						response.sendError(HttpServletResponse.SC_BAD_REQUEST);
 					} else {
-						String data = IO.toString(reader);
-						if (data.substring(0, 5).equals("data=")) {
-							List<SocketIOMessage> list = SocketIOMessage.parse(URIUtil.decodePath(data.substring(5)));
-							for (SocketIOMessage msg: list) {
+						String data = decodePostData(request.getContentType(), IO.toString(reader));
+						if (data != null && data.length() > 0) {
+							List<SocketIOFrame> list = SocketIOFrame.parse(URIUtil.decodePath(data.substring(5)));
+							for (SocketIOFrame msg: list) {
 								session.onMessage(msg);
 							}
 						}
@@ -223,18 +239,33 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 			
 		}
 
+		protected String decodePostData(String contentType, String data) {
+			if (contentType.startsWith("application/x-www-form-urlencoded")) {
+				if (data.substring(0, 5).equals("data=")) {
+					return URIUtil.decodePath(data.substring(5));
+				} else {
+					return "";
+				}
+			} else if (contentType.startsWith("text/plain")) {
+				return data;
+			} else {
+				// TODO: Treat as text for now, maybe error in the future.
+				return data;
+			}
+		}
+		
 		@Override
 		public void onComplete(Continuation cont) {
 			if (continuation != null && cont == continuation) {
 				if (isConnectionPersistant) {
 					is_open = false;
-					session.onDisconnect(DisconnectReason.NORMAL);
+					session.onDisconnect(DisconnectReason.DISCONNECT);
 					continuation = null;
 					session.onShutdown();
 				} else {
 					continuation = null;
 					if (!is_open && buffer.isEmpty()) {
-						session.onDisconnect(DisconnectReason.NORMAL);
+						session.onDisconnect(DisconnectReason.DISCONNECT);
 						abort();
 					}
 					session.startTimeoutTimer();
@@ -253,14 +284,14 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 				} else {
 					continuation = null;
 					if (!is_open && buffer.isEmpty()) {
-						session.onDisconnect(DisconnectReason.NORMAL);
+						session.onDisconnect(DisconnectReason.DISCONNECT);
 						abort();
 					} else {
 						try {
 							finishSend(cont.getServletResponse());
 						} catch (IOException e) {
 							continuation = null;
-							session.onDisconnect(DisconnectReason.NORMAL);
+							session.onDisconnect(DisconnectReason.DISCONNECT);
 							abort();
 						}
 					}
@@ -275,6 +306,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		public void connect(HttpServletRequest request,
 				HttpServletResponse response) throws IOException {
 			request.setAttribute(SESSION_KEY, session);
+			response.setBufferSize(bufferSize);
 			continuation = ContinuationSupport.getContinuation(request);
 			continuation.addContinuationListener(this);
 			if (isConnectionPersistant) {
@@ -326,10 +358,10 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 	
 	@Override
 	protected SocketIOSession connect(HttpServletRequest request,
-			HttpServletResponse response, Factory inboundFactory,
+			HttpServletResponse response, Transport.InboundFactory inboundFactory,
 			com.glines.socketio.server.SocketIOSession.Factory sessionFactory)
 			throws IOException {
-		SocketIOInbound inbound = inboundFactory.getInbound(request, "");
+		SocketIOInbound inbound = inboundFactory.getInbound(request.getCookies(), null, null, null);
 		if (inbound != null) {
  			SocketIOSession session = sessionFactory.createSession(inbound);
 			XHRSessionHelper handler =  createHelper(session);

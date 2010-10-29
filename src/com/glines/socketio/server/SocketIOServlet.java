@@ -33,6 +33,7 @@ import javax.servlet.GenericServlet;
 import javax.servlet.ServletException;
 import javax.servlet.ServletRequest;
 import javax.servlet.ServletResponse;
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -119,12 +120,12 @@ public abstract class SocketIOServlet extends GenericServlet {
     		}
     	}
 
-  		transport.handle(request, response, new SocketIOInbound.Factory() {
+  		transport.handle(request, response, new Transport.InboundFactory() {
 
 			@Override
-			public SocketIOInbound getInbound(HttpServletRequest request,
-					String protocol) {
-				return SocketIOServlet.this.doSocketIOConnect(request, protocol);
+			public SocketIOInbound getInbound(Cookie[] cookies,
+					String host, String origin, String[] protocols) {
+				return SocketIOServlet.this.doSocketIOConnect(cookies, host, origin, protocols);
 			}
   			
   		}, sessionManager);
@@ -138,5 +139,9 @@ public abstract class SocketIOServlet extends GenericServlet {
     	super.destroy();
     }
 
-	protected abstract SocketIOInbound doSocketIOConnect(HttpServletRequest request, String protocol);
+    /**
+     * Returns an instance of SocketIOInbound or null if the connection is to be denied.
+     */
+	protected abstract SocketIOInbound doSocketIOConnect(Cookie[] cookies,
+			String host, String origin, String[] protocols);
 }

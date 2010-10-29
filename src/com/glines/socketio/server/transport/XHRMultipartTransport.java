@@ -8,7 +8,7 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.glines.socketio.common.SocketIOMessage;
+import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
 
 public class XHRMultipartTransport extends XHRTransport {
@@ -45,8 +45,8 @@ public class XHRMultipartTransport extends XHRTransport {
 		protected void customConnect(HttpServletRequest request,
 				HttpServletResponse response) throws IOException {
 			startSend(response);
-			writeData(response, SocketIOMessage.encode(SocketIOMessage.Type.SESSION_ID, session.getSessionId()));
-			writeData(response, SocketIOMessage.encode(SocketIOMessage.Type.HEARTBEAT_INTERVAL, "" + HEARTBEAT_DELAY));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.Type.SESSION_ID, session.getSessionId()));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.Type.HEARTBEAT_INTERVAL, "" + HEARTBEAT_DELAY));
 		}
 	}
 

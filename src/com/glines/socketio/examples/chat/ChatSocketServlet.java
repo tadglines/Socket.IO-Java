@@ -29,11 +29,14 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.Cookie;
 
 import org.eclipse.jetty.util.ajax.JSON;
 
-import com.glines.socketio.server.SocketIOException;
+import com.glines.socketio.common.CloseType;
+import com.glines.socketio.common.DisconnectReason;
+import com.glines.socketio.common.SocketIOException;
+import com.glines.socketio.common.SocketIOMessageParser;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOServlet;
 
@@ -45,6 +48,12 @@ public class ChatSocketServlet extends SocketIOServlet {
 	private class ChatConnection implements SocketIOInbound {
 		private SocketIOOutbound outbound = null;
 		private Integer sessionId = ids.getAndIncrement();
+
+		@Override
+		public String getProtocol() {
+			// TODO Auto-generated method stub
+			return null;
+		}
 
 		@Override
 		public void onConnect(SocketIOOutbound outbound) {
@@ -63,7 +72,7 @@ public class ChatSocketServlet extends SocketIOServlet {
 		}
 
 		@Override
-		public void onDisconnect(DisconnectReason reason) {
+		public void onDisconnect(DisconnectReason reason, String errorMessage) {
 			synchronized(this) {
 				this.outbound = null;
 			}
@@ -75,11 +84,18 @@ public class ChatSocketServlet extends SocketIOServlet {
 		}
 
 		@Override
-		public void onMessage(String message) {
+		public void onClose(CloseType requestedType, CloseType result) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onMessage(int messageType, Object message,
+				SocketIOException parseError) {
 			System.out.println("Recieved: " + message);
 			broadcast("~j~" + JSON.toString(
 					Collections.singletonMap("message",
-							new String[]{sessionId.toString(), message})));
+							new String[]{sessionId.toString(), (String)message})));
 		}
 
 		private void broadcast(String message) {
@@ -96,11 +112,17 @@ public class ChatSocketServlet extends SocketIOServlet {
 				}
 			}
 		}
+
+		@Override
+		public SocketIOMessageParser getMessageParser(int messageType) {
+			// TODO Auto-generated method stub
+			return null;
+		}
 	}
 
 	@Override
-	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request,
-			String protocol) {
+	protected SocketIOInbound doSocketIOConnect(Cookie[] cookies, String host,
+			String origin, String[] protocols) {
 		return new ChatConnection();
 	}
 

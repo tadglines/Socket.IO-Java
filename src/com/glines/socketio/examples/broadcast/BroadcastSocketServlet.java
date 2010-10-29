@@ -27,8 +27,12 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
-import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.Cookie;
 
+import com.glines.socketio.common.CloseType;
+import com.glines.socketio.common.DisconnectReason;
+import com.glines.socketio.common.SocketIOException;
+import com.glines.socketio.common.SocketIOMessageParser;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOServlet;
 
@@ -40,6 +44,12 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 		private SocketIOOutbound outbound = null;
 
 		@Override
+		public String getProtocol() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
 		public void onConnect(SocketIOOutbound outbound) {
 			this.outbound = outbound;
 			synchronized (connections) {
@@ -48,7 +58,7 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 		}
 
 		@Override
-		public void onDisconnect(DisconnectReason reason) {
+		public void onDisconnect(DisconnectReason reason, String errorMessage) {
 			synchronized(this) {
 				this.outbound = null;
 			}
@@ -58,8 +68,15 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 		}
 
 		@Override
-		public void onMessage(String message) {
-			broadcast(message);
+		public void onClose(CloseType requestedType, CloseType result) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onMessage(int messageType, Object message,
+				SocketIOException parseError) {
+			broadcast((String)message);
 		}
 
 		private void broadcast(String message) {
@@ -76,11 +93,17 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 				}
 			}
 		}
+
+		@Override
+		public SocketIOMessageParser getMessageParser(int messageType) {
+			// TODO Auto-generated method stub
+			return null;
+		}
 	}
 
 	@Override
-	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request,
-			String protocol) {
+	protected SocketIOInbound doSocketIOConnect(Cookie[] cookies, String host,
+			String origin, String[] protocols) {
 		return new BroadcastConnection();
 	}
 

@@ -21,26 +21,25 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio.server;
+package com.glines.socketio.common;
 
-import java.io.IOException;
 
-public class SocketIOException extends IOException {
+public class SocketIOMessageParserException extends SocketIOException {
 	private static final long serialVersionUID = 1L;
 
-	public SocketIOException() {
+	public SocketIOMessageParserException() {
 		super();
 	}
 
-	public SocketIOException(String message) {
+	public SocketIOMessageParserException(String message) {
 		super(message);
 	}
 
-	public SocketIOException(Throwable cause) {
-		super(cause);
+	public SocketIOMessageParserException(String message, Throwable cause) {
+		super(message, cause);
 	}
 
-	public SocketIOException(String message, Throwable cause) {
-		super(message, cause);
+	public SocketIOMessageParserException(Throwable cause) {
+		super(cause);
 	}
 }

@@ -33,8 +33,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.glines.socketio.common.SocketIOMessage;
-import com.glines.socketio.server.SocketIOInbound.DisconnectReason;
+import com.glines.socketio.common.DisconnectReason;
+import com.glines.socketio.common.SocketIOException;
 
 class SocketIOSessionManager implements SocketIOSession.Factory {
 	private static final char[] BASE64_ALPHABET =
@@ -118,7 +118,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 			String data = "" + pingId.incrementAndGet();
 			System.out.println("Session["+sessionId+"]: sendPing " + data);
 			try {
-				handler.sendMessage(SocketIOMessage.Type.PING, data);
+				handler.sendMessage(SocketIOFrame.Type.PING, data);
 			} catch (SocketIOException e) {
 				handler.abort();
 			}
@@ -167,7 +167,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		}
 
 		@Override
-		public void onMessage(SocketIOMessage message) {
+		public void onMessage(SocketIOFrame message) {
 			switch (message.getType()) {
 			case SESSION_ID:
 			case HEARTBEAT_INTERVAL:
@@ -198,7 +198,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		@Override
 		public void onPing(String data) {
 			try {
-				handler.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.PONG, data));
+				handler.sendMessage(SocketIOFrame.encode(SocketIOFrame.Type.PONG, data));
 			} catch (SocketIOException e) {
 				handler.abort();
 			}
@@ -215,7 +215,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		@Override
 		public void onClose(String data) {
 			state = SessionState.CLOSED;
-			onDisconnect(DisconnectReason.NORMAL);
+			onDisconnect(DisconnectReason.DISCONNECT);
 			handler.abort();
 		}
 
@@ -254,7 +254,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		public void onMessage(String message) {
 			if (inbound != null) {
 				try {
-					inbound.onMessage(message);
+					inbound.onMessage(SocketIOFrame.TEXT_MESSAGE_TYPE, message, null);
 				} catch (Throwable e) {
 					// Ignore
 				}
@@ -269,7 +269,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 			if (inbound != null) {
 				state = SessionState.CLOSED;
 				try {
-					inbound.onDisconnect(reason);
+					inbound.onDisconnect(reason, null);
 				} catch (Throwable e) {
 					// Ignore
 				}

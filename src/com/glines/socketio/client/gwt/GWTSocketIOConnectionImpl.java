@@ -1,6 +1,11 @@
 package com.glines.socketio.client.gwt;
 
-import com.glines.socketio.client.SocketIOConnection;
+import com.glines.socketio.client.common.SocketIOConnection;
+import com.glines.socketio.common.CloseType;
+import com.glines.socketio.common.ConnectionState;
+import com.glines.socketio.common.DisconnectReason;
+import com.glines.socketio.common.SocketIOException;
+import com.glines.socketio.common.SocketIOMessageParser;
 import com.google.gwt.core.client.JavaScriptObject;
 
 public class GWTSocketIOConnectionImpl implements SocketIOConnection {
@@ -71,10 +76,15 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 		state = ConnectionState.CONNECTING;
 		socket.connect();
 	}
+
+	@Override
+	public void close(CloseType closeType) {
+		throw new UnsupportedOperationException();
+	}
 	
 	@Override
 	public void disconnect() {
-		if (ConnectionState.OPEN == state) {
+		if (ConnectionState.CONNECTED == state) {
 			state = ConnectionState.CLOSING;
 			socket.disconnect();
 		} else if (ConnectionState.CONNECTING == state) {
@@ -89,16 +99,27 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 	}
 
 	@Override
-	public void sendMessage(String message) {
-		if (ConnectionState.OPEN != state) {
+	public void sendMessage(String message) throws SocketIOException {
+		if (ConnectionState.CONNECTED != state) {
 			throw new IllegalStateException("Not connected");
 		}
 		socket.send(message);
 	}
 
+	@Override
+	public void sendMessage(int messageType, Object message)
+			throws SocketIOException {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void setMessageParser(int messageType, SocketIOMessageParser parser) {
+		throw new UnsupportedOperationException();
+	}
+
 	@SuppressWarnings("unused")
 	private void onConnect() {
-		state = ConnectionState.OPEN;
+		state = ConnectionState.CONNECTED;
 		try {
 			listener.onConnect();
 		} catch (Exception e) {
@@ -110,7 +131,7 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 	private void onDisconnect() {
 		state = ConnectionState.CLOSED;
 		try {
-			listener.onDisconnect(socket.wasConnecting());
+			listener.onDisconnect(socket.wasConnecting() ? DisconnectReason.CLOSE_FAILED : DisconnectReason.DISCONNECT, null);
 		} catch (Exception e) {
 			// Ignore
 		}
@@ -119,7 +140,7 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 	@SuppressWarnings("unused")
 	private void onMessage(String message) {
 		try {
-			listener.onMessage(message);
+			listener.onMessage(0, message, null);
 		} catch (Exception e) {
 			// Ignore
 		}

@@ -1,9 +1,9 @@
-package com.glines.socketio.common;
+package com.glines.socketio.server;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class SocketIOMessage {
+public class SocketIOFrame {
 	public static final char SEPERATOR_CHAR = '~';
 	public enum Type {
 		UNKNOWN(-1),
@@ -44,6 +44,9 @@ public class SocketIOMessage {
 		}
 	}
 
+	public static final int TEXT_MESSAGE_TYPE = 0;
+	public static final int JSON_MESSAGE_TYPE = 1;
+	
 	private static boolean isNumber(String str, int start, int end) {
 		for (int i = start; i < end; i++) {
 			if (!Character.isDigit(str.charAt(i))) {
@@ -53,8 +56,8 @@ public class SocketIOMessage {
 		return true;
 	}
 	
-	public static List<SocketIOMessage> parse(String data) {
-		List<SocketIOMessage> messages = new ArrayList<SocketIOMessage>();
+	public static List<SocketIOFrame> parse(String data) {
+		List<SocketIOFrame> messages = new ArrayList<SocketIOFrame>();
 		int idx = 0;
 
 		// Parse the data and silently ignore any part that fails to parse properly.
@@ -84,7 +87,7 @@ public class SocketIOMessage {
 				break;
 			}
 
-			messages.add(new SocketIOMessage(Type.fromInt(type), data.substring(start, end)));
+			messages.add(new SocketIOFrame(Type.fromInt(type), data.substring(start, end)));
 			idx = end;
 		}
 		
@@ -105,7 +108,7 @@ public class SocketIOMessage {
 	private final Type type;
 	private final String data;
 	
-	public SocketIOMessage(Type type, String data) {
+	public SocketIOFrame(Type type, String data) {
 		this.type = type;
 		this.data = data;
 	}

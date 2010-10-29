@@ -23,6 +23,8 @@
 
 package com.glines.socketio.server;
 
+import com.glines.socketio.common.SocketIOException;
+
 public class SocketIOClosedException extends SocketIOException {
 	private static final long serialVersionUID = 1L;
 

@@ -21,30 +21,26 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio.server;
+package com.glines.socketio.common;
 
 import java.io.IOException;
 
-import javax.servlet.ServletConfig;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+public class SocketIOException extends IOException {
+	private static final long serialVersionUID = 1L;
 
-public interface Transport {
-	interface InboundFactory {
-		SocketIOInbound getInbound(Cookie[] cookies,
-				String host, String origin, String[] protocols);
+	public SocketIOException() {
+		super();
 	}
 
-	/**
-	 * @return The name of the transport instance.
-	 */
-	String getName();
+	public SocketIOException(String message) {
+		super(message);
+	}
 
-	void init(ServletConfig config);
-	
-	void destroy();
+	public SocketIOException(Throwable cause) {
+		super(cause);
+	}
 
-	void handle(HttpServletRequest request, HttpServletResponse response,
-			Transport.InboundFactory inboundFactory, SocketIOSession.Factory sessionFactory) throws IOException;
+	public SocketIOException(String message, Throwable cause) {
+		super(message, cause);
+	}
 }

@@ -29,7 +29,7 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.glines.socketio.common.SocketIOMessage;
+import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
 
 public class JSONPPollingTransport extends XHRTransport {
@@ -66,8 +66,8 @@ public class JSONPPollingTransport extends XHRTransport {
 	    		jsonpIndex = Integer.parseInt(parts[3]);
 	    	}
 			startSend(response);
-			writeData(response, SocketIOMessage.encode(SocketIOMessage.Type.SESSION_ID, session.getSessionId()));
-			writeData(response, SocketIOMessage.encode(SocketIOMessage.Type.HEARTBEAT_INTERVAL, "" + REQUEST_TIMEOUT));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.Type.SESSION_ID, session.getSessionId()));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.Type.HEARTBEAT_INTERVAL, "" + REQUEST_TIMEOUT));
 		}
 	}
 	

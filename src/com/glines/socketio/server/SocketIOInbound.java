@@ -25,33 +25,36 @@ package com.glines.socketio.server;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.glines.socketio.common.CloseType;
+import com.glines.socketio.common.ConnectionState;
+import com.glines.socketio.common.DisconnectReason;
+import com.glines.socketio.common.SocketIOException;
+import com.glines.socketio.common.SocketIOMessageParser;
+
 public interface SocketIOInbound {
-	enum DisconnectReason {
-		NORMAL,		// Client or server initiated
-		TIMEOUT,	// Some kind of timeout happened
-		ERROR;		// An error of some kind occurred and the connection has been aborted
-	}
-	
-	interface Factory {
-		SocketIOInbound getInbound(HttpServletRequest request, String protocol);
-	}
-	
 	interface SocketIOOutbound {
 		/**
-		 * Initiate socket disconnect. This method may return before the connection disconnect completes.
-		 * The onDisconnect() method of the associated SocketInbound will be called when the disconnect is completed.
-		 * The onDisconnect() method may be called during the invocation of this method.
-		 * Messages may continue to arrive via onMessage().
+		 * Terminate the connection. This method may return before the connection disconnect
+		 * completes. The onDisconnect() method of the associated SocketInbound will be called
+		 * when the disconnect is completed. The onDisconnect() method may be called during the
+		 * invocation of this method.
 		 */
 		void disconnect();
 
 		/**
-		 * @return true if connection is open
+		 * Initiate an orderly close of the connection. The state will be changed to CLOSING so no
+		 * new messages can be sent, but messages may still arrive until the distent end has
+		 * acknowledged the close.
+		 * 
+		 * @param closeType
 		 */
-		boolean isOpen();
+		void close(CloseType closeType);
+		
+		ConnectionState getconnectionState();
 
 		/**
-		 * Send a message to the client. This method will block if the message will not fit in the outbound buffer.
+		 * Send a message to the client. This method will block if the message will not fit in the
+		 * outbound buffer.
 		 * If the socket is closed, becomes closed, or times out, while trying to send the message,
 		 * the SocketClosedException will be thrown.
 		 *
@@ -59,8 +62,25 @@ public interface SocketIOInbound {
 		 * @throws SocketIOException
 		 */
 		void sendMessage(String message) throws SocketIOException;
+		
+		/**
+		 * Send a message.
+		 * 
+		 * @param message
+		 * @throws IllegalStateException if the socket is not CONNECTED.
+		 * @throws SocketIOMessageParserException if the message type parser encode() failed.
+		 */
+		void sendMessage(int messageType, Object message) throws SocketIOException;
 	}
 
+	/**
+	 * Return the name of the protocol this inbound is associated with.
+	 * This is one of the values provided by
+	 * {@link SocketIOServlet#doSocketIOConnect(HttpServletRequest, String[])}.
+	 * @return
+	 */
+	String getProtocol();
+	
 	/**
 	 * Called when the connection is established. This will only ever be called once.
 	 * @param outbound The SocketOutbound associated with the connection
@@ -69,14 +89,35 @@ public interface SocketIOInbound {
 	
 	/**
 	 * Called when the socket connection is closed. This will only ever be called once.
-	 * This method may be called instead of onConnect() if the connection handshake isn't completed successfully.
-	 * @param The reason for the disconnect.
+	 * This method may be called instead of onConnect() if the connection handshake isn't
+	 * completed successfully.
+	 * @param reason The reason for the disconnect.
+	 * @param errorMessage Possibly non null error message associated with the reason for disconnect.
 	 */
-	void onDisconnect(DisconnectReason reason);
+	void onDisconnect(DisconnectReason reason, String errorMessage);
 	
 	/**
-	 * Called once for each message sent by the client.
-	 * @param message the message sent by the client
+	 * Called if an orderly close completed.
+	 * @param requestedType The type of close requested.
+	 * @param result The type of close actually accomplished.
 	 */
-	void onMessage(String message);
+	void onClose(CloseType requestedType, CloseType result);
+
+
+	/**
+	 * Called one per arriving message.
+	 * @param messageType
+	 * @param message
+	 * @param parseError
+	 */
+	void onMessage(int messageType, Object message, SocketIOException parseError);
+	
+	/**
+	 * Return the parser associated with the requested message type, or null of non exists.
+	 * This will only be called once per message type the first time that message type is
+	 * encountered.
+	 * @param messageType
+	 * @return the parser or null
+	 */
+	SocketIOMessageParser getMessageParser(int messageType);
 }

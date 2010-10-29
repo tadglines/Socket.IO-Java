@@ -28,9 +28,9 @@ import java.io.IOException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOSession;
 import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
+import com.glines.socketio.server.Transport;
 
 public abstract class AbstractHttpTransport extends AbstractTransport {
 	/**
@@ -63,13 +63,13 @@ public abstract class AbstractHttpTransport extends AbstractTransport {
 	protected abstract SocketIOSession connect(
 			HttpServletRequest request,
 			HttpServletResponse response,
-			SocketIOInbound.Factory inboundFactory,
+			Transport.InboundFactory inboundFactory,
 			SocketIOSession.Factory sessionFactory) throws IOException;
 
 	@Override
 	public void handle(HttpServletRequest request,
 			HttpServletResponse response,
-			SocketIOInbound.Factory inboundFactory,
+			Transport.InboundFactory inboundFactory,
 			SocketIOSession.Factory sessionFactory)
 			throws IOException {
 

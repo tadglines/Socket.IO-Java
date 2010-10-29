@@ -27,8 +27,13 @@ import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
 
+import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
+import com.glines.socketio.common.CloseType;
+import com.glines.socketio.common.DisconnectReason;
+import com.glines.socketio.common.SocketIOException;
+import com.glines.socketio.common.SocketIOMessageParser;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOServlet;
 
@@ -40,6 +45,12 @@ public class EchoSocketServlet extends SocketIOServlet {
 		private SocketIOOutbound outbound = null;
 
 		@Override
+		public String getProtocol() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
 		public void onConnect(SocketIOOutbound outbound) {
 			this.outbound = outbound;
 			synchronized (connections) {
@@ -48,7 +59,7 @@ public class EchoSocketServlet extends SocketIOServlet {
 		}
 
 		@Override
-		public void onDisconnect(DisconnectReason reason) {
+		public void onDisconnect(DisconnectReason reason, String errorMessage) {
 			synchronized(this) {
 				this.outbound = null;
 			}
@@ -58,18 +69,31 @@ public class EchoSocketServlet extends SocketIOServlet {
 		}
 
 		@Override
-		public void onMessage(String message) {
+		public void onClose(CloseType requestedType, CloseType result) {
+			// TODO Auto-generated method stub
+			
+		}
+
+		@Override
+		public void onMessage(int messageType, Object message,
+				SocketIOException parseError) {
 			try {
-				outbound.sendMessage(message);
+				outbound.sendMessage((String)message);
 			} catch (IOException e) {
 				outbound.disconnect();
 			}
 		}
+
+		@Override
+		public SocketIOMessageParser getMessageParser(int messageType) {
+			// TODO Auto-generated method stub
+			return null;
+		}
 	}
 
 	@Override
-	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request,
-			String protocol) {
+	protected SocketIOInbound doSocketIOConnect(Cookie[] cookies, String host,
+			String origin, String[] protocols) {
 		return new EchoConnection();
 	}
 

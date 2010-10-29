@@ -33,11 +33,14 @@ import javax.servlet.http.HttpServletResponse;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocketFactory;
 
-import com.glines.socketio.common.SocketIOMessage;
+import com.glines.socketio.common.CloseType;
+import com.glines.socketio.common.ConnectionState;
+import com.glines.socketio.common.SocketIOException;
 import com.glines.socketio.server.SocketIOClosedException;
-import com.glines.socketio.server.SocketIOException;
 import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.Transport;
 
 public class WebSocketTransport extends AbstractTransport {
 	public static final String TRANSPORT_NAME = "websocket";
@@ -85,8 +88,8 @@ public class WebSocketTransport extends AbstractTransport {
 			if (!initiated) {
 				if ("OPEN".equals(message)) {
 					try {
-						outbound.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.SESSION_ID, session.getSessionId()));
-						outbound.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.HEARTBEAT_INTERVAL, "" + session.getHeartbeat()));
+						outbound.sendMessage(SocketIOFrame.encode(SocketIOFrame.Type.SESSION_ID, session.getSessionId()));
+						outbound.sendMessage(SocketIOFrame.encode(SocketIOFrame.Type.HEARTBEAT_INTERVAL, "" + session.getHeartbeat()));
 						open = true;
 						session.onConnect(this);
 						initiated = true;
@@ -99,9 +102,9 @@ public class WebSocketTransport extends AbstractTransport {
 					session.onShutdown();
 				}
 			} else {
-				List<SocketIOMessage> messages = SocketIOMessage.parse(message);
+				List<SocketIOFrame> messages = SocketIOFrame.parse(message);
 				
-				for (SocketIOMessage msg: messages) {
+				for (SocketIOFrame msg: messages) {
 					session.onMessage(msg);
 				}
 			}
@@ -131,28 +134,29 @@ public class WebSocketTransport extends AbstractTransport {
 		public void disconnect() {
 			open = false;
 			try {
-				outbound.sendMessage(SocketIOMessage.encode(SocketIOMessage.Type.CLOSE, "close"));
+				outbound.sendMessage(SocketIOFrame.encode(SocketIOFrame.Type.CLOSE, "close"));
 				outbound.disconnect();
 			} catch (IOException e) {
 				abort();
 			}
 		}
 
-		/*
-		 * (non-Javadoc)
-		 * @see com.glines.socketio.SocketIOInbound.SocketIOOutbound#isOpen()
-		 */
 		@Override
-		public boolean isOpen() {
-			return open && outbound.isOpen();
+		public void close(CloseType closeType) {
+			throw new UnsupportedOperationException();
 		}
 
 		@Override
-		public void sendMessage(SocketIOMessage.Type type, String data) throws SocketIOException {
-			if (isOpen()) {
+		public ConnectionState getconnectionState() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void sendMessage(SocketIOFrame.Type type, String data) throws SocketIOException {
+			if (open && outbound.isOpen()) {
 				System.out.println("Session["+session.getSessionId()+"]: sendMessage: [" + type + "]: " + data);
 				try {
-					outbound.sendMessage(SocketIOMessage.encode(type, data));
+					outbound.sendMessage(SocketIOFrame.encode(type, data));
 				} catch (IOException e) {
 					outbound.disconnect();
 					throw new SocketIOException(e);
@@ -163,7 +167,7 @@ public class WebSocketTransport extends AbstractTransport {
 		}
 
 		@Override
-		public void sendMessage(SocketIOMessage message) throws SocketIOException {
+		public void sendMessage(SocketIOFrame message) throws SocketIOException {
 			sendMessage(message.getType(), message.getData());
 		}
 		
@@ -174,7 +178,13 @@ public class WebSocketTransport extends AbstractTransport {
 		 */
 		@Override
 		public void sendMessage(String message) throws SocketIOException {
-			sendMessage(SocketIOMessage.Type.TEXT, message);
+			sendMessage(SocketIOFrame.Type.TEXT, message);
+		}
+
+		@Override
+		public void sendMessage(int messageType, Object message)
+				throws SocketIOException {
+			throw new UnsupportedOperationException();
 		}
 
 		/*
@@ -195,7 +205,6 @@ public class WebSocketTransport extends AbstractTransport {
 			outbound = null;
 			session.onShutdown();
 		}
-		
 	}
 
 	public WebSocketTransport(int bufferSize, int maxIdleTime) {
@@ -213,7 +222,7 @@ public class WebSocketTransport extends AbstractTransport {
 	@Override
 	public void handle(HttpServletRequest request,
 			HttpServletResponse response,
-			SocketIOInbound.Factory inboundFactory,
+			Transport.InboundFactory inboundFactory,
 			SocketIOSession.Factory sessionFactory)
 			throws IOException {
 
@@ -232,7 +241,7 @@ public class WebSocketTransport extends AbstractTransport {
 	        	origin = host;
 	        }
 	
-	        SocketIOInbound inbound = inboundFactory.getInbound(request, protocol);
+	        SocketIOInbound inbound = inboundFactory.getInbound(request.getCookies(), host, origin, protocol.split(" "));
 	        if (inbound == null) {
 	        	if (hixie) {
                     response.setHeader("Connection","close");

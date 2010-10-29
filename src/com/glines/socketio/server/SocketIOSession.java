@@ -28,8 +28,8 @@ import java.io.IOException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.glines.socketio.common.SocketIOMessage;
-import com.glines.socketio.server.SocketIOInbound.DisconnectReason;
+import com.glines.socketio.common.DisconnectReason;
+import com.glines.socketio.common.SocketIOException;
 
 public interface SocketIOSession {
 	enum SessionState {
@@ -47,8 +47,8 @@ public interface SocketIOSession {
 
 	interface SessionTransportHandler extends SocketIOInbound.SocketIOOutbound {
 		void handle(HttpServletRequest request, HttpServletResponse response, SocketIOSession session) throws IOException;
-		void sendMessage(SocketIOMessage.Type type, String data) throws SocketIOException;
-		void sendMessage(SocketIOMessage message) throws SocketIOException;
+		void sendMessage(SocketIOFrame.Type type, String data) throws SocketIOException;
+		void sendMessage(SocketIOFrame message) throws SocketIOException;
 		/**
 		 * Cause connection and all activity to be aborted and all resources to be released.
 		 * The handler is expected to call the session's onShutdown() when it is finished.
@@ -83,7 +83,7 @@ public interface SocketIOSession {
 	void startHeartbeatTimer();
 	void clearHeartbeatTimer();
 
-	void onMessage(SocketIOMessage message);
+	void onMessage(SocketIOFrame message);
 	void onPing(String data);
 	void onPong(String data);
 	void onClose(String data);

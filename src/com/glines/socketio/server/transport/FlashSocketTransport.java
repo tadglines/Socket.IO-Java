@@ -44,8 +44,8 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.eclipse.jetty.util.IO;
 
-import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.Transport;
 
 public class FlashSocketTransport extends WebSocketTransport {
 	public static final String TRANSPORT_NAME = "flashsocket";
@@ -100,7 +100,7 @@ public class FlashSocketTransport extends WebSocketTransport {
 	@Override
 	public void handle(HttpServletRequest request,
 			HttpServletResponse response,
-			SocketIOInbound.Factory inboundFactory,
+			Transport.InboundFactory inboundFactory,
 			SocketIOSession.Factory sessionFactory)
 			throws IOException {
 

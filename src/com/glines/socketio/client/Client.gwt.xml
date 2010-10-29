@@ -1,0 +1,6 @@
+<module>
+    <inherits name="com.google.gwt.core.Core"/>
+    <inherits name="com.glines.socketio.Common"/>
+    <source path="common"/>
+    <source path="gwt"/>
+</module>
