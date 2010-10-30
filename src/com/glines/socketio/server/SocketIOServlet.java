@@ -141,6 +141,7 @@ public abstract class SocketIOServlet extends GenericServlet {
 
     /**
      * Returns an instance of SocketIOInbound or null if the connection is to be denied.
+     * The value of cookies and protocols may be null.
      */
 	protected abstract SocketIOInbound doSocketIOConnect(Cookie[] cookies,
 			String host, String origin, String[] protocols);

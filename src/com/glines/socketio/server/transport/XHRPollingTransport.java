@@ -29,9 +29,6 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.glines.socketio.common.CloseType;
-import com.glines.socketio.common.ConnectionState;
-import com.glines.socketio.common.SocketIOException;
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
 
@@ -59,8 +56,8 @@ public class XHRPollingTransport extends XHRTransport {
 		protected void customConnect(HttpServletRequest request,
 				HttpServletResponse response) throws IOException {
 			startSend(response);
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.Type.SESSION_ID, session.getSessionId()));
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.Type.HEARTBEAT_INTERVAL, "" + REQUEST_TIMEOUT));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, session.getSessionId()));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + REQUEST_TIMEOUT));
 		}
 	}
 	

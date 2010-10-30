@@ -7,6 +7,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.eclipse.jetty.client.Address;
 import org.eclipse.jetty.client.HttpClient;
@@ -16,11 +17,9 @@ import org.eclipse.jetty.io.ByteArrayBuffer;
 import org.eclipse.jetty.util.URIUtil;
 
 import com.glines.socketio.client.common.SocketIOConnection;
-import com.glines.socketio.common.CloseType;
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
-import com.glines.socketio.common.SocketIOMessageParser;
 import com.glines.socketio.server.SocketIOFrame;
 
 public class SocketIOConnectionXHRBase implements SocketIOConnection {
@@ -37,11 +36,12 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 	protected ConnectionState state = ConnectionState.CLOSED;
 	protected HttpExchange currentGet;
 	protected HttpExchange currentPost;
-	protected CloseType closeRequested = null;
-	protected CloseType closeAchieved = null;
 	protected final boolean isConnectionPersistent;
 	protected LinkedList<SocketIOFrame> queue = new LinkedList<SocketIOFrame>();
 	protected AtomicBoolean doingSend = new AtomicBoolean(false);
+	protected AtomicLong messageId = new AtomicLong(0);
+	protected String closeId = null;
+	protected boolean disconnectWhenEmpty = false;
 
 	public SocketIOConnectionXHRBase(SocketIOConnection.SocketIOConnectionListener listener, 
 			String host, short port, String transport, boolean isConnectionPersistent) {
@@ -91,9 +91,10 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 	}
 
 	@Override
-	public void close(CloseType closeType) {
-		closeRequested = closeType;
-		sendFrame(new SocketIOFrame(SocketIOFrame.Type.TEXT, "close"));
+	public void close() {
+		state = ConnectionState.CLOSING;
+		closeId = "" + messageId.get();
+		sendFrame(new SocketIOFrame(SocketIOFrame.FrameType.CLOSE, 0, closeId));
 	}
 	
 	@Override
@@ -106,11 +107,14 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 		case CONNECTING:
 			listener.onDisconnect(DisconnectReason.CONNECT_FAILED, error);
 			break;
+		case CLOSED:
+			listener.onDisconnect(DisconnectReason.CLOSED, error);
+			break;
 		case CLOSING:
-			if (closeAchieved != null) {
-				listener.onClose(closeRequested, closeAchieved);
-			} else {
+			if (closeId != null) {
 				listener.onDisconnect(DisconnectReason.CLOSE_FAILED, error);
+			} else {
+				listener.onDisconnect(DisconnectReason.CLOSED_REMOTELY, error);
 			}
 			break;
 		case CONNECTED:
@@ -147,21 +151,14 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 	}
 
 	@Override
-	public void sendMessage(int messageType, Object message) throws SocketIOException {
-		if (messageType == SocketIOFrame.TEXT_MESSAGE_TYPE) {
-			sendFrame(new SocketIOFrame(SocketIOFrame.Type.TEXT, (String)message));
-		} else {
-			throw new IllegalArgumentException();
-		}
+	public void sendMessage(int messageType, String message) throws SocketIOException {
+		sendFrame(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
 	}
 
 	protected void sendFrame(SocketIOFrame frame) {
+		messageId.incrementAndGet();
 		synchronized (queue) {
-			if (frame.getType() == SocketIOFrame.Type.PONG) {
-				queue.addFirst(frame);
-			} else {
-				queue.add(frame);
-			}
+			queue.add(frame);
 		}
 		checkSend();
 	}
@@ -177,11 +174,6 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 			}
 			doSend(str.toString());
 		}
-	}
-	
-	@Override
-	public void setMessageParser(int messageType, SocketIOMessageParser parser) {
-		throw new UnsupportedOperationException();
 	}
 	
 	protected void onTimeout(String error) {
@@ -200,7 +192,7 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 	}
 	
 	protected void onFrame(SocketIOFrame frame) {
-		switch (frame.getType()) {
+		switch (frame.getFrameType()) {
 		case SESSION_ID:
 			if (state == ConnectionState.CONNECTING) {
 				sessionId = frame.getData();
@@ -221,8 +213,8 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 		case PONG:
 			onPong(frame.getData());
 			break;
-		case TEXT:
-			onMessageData(SocketIOFrame.TEXT_MESSAGE_TYPE, frame.getData());
+		case DATA:
+			onMessageData(frame.getMessageType(), frame.getData());
 			break;
 		default:
 			break;
@@ -230,22 +222,20 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 	}
 
 	protected void onClose(String data) {
-		if (closeRequested != null) {
-			switch (closeRequested) {
-			case CLOSE_SIMPLE:
-			case CLOSE_CLEAN:
-				break;
+		if (state == ConnectionState.CLOSING) {
+			if (closeId != null && closeId.equals(data)) {
+				state = ConnectionState.CLOSED;
+				_disconnect(DisconnectReason.DISCONNECT, null);
 			}
 		} else {
 			state = ConnectionState.CLOSING;
-			if (closeAchieved == null) {
-				closeAchieved = CloseType.CLOSE_SIMPLE;
-			}
+			disconnectWhenEmpty = true;
+			sendFrame(new SocketIOFrame(SocketIOFrame.FrameType.CLOSE, 0, data));
 		}
 	}
 
 	protected void onPing(String data) {
-		sendFrame(new SocketIOFrame(SocketIOFrame.Type.TEXT, data));
+		sendFrame(new SocketIOFrame(SocketIOFrame.FrameType.PONG, 0, data));
 	}
 
 	protected void onPong(String data) {
@@ -254,7 +244,7 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 
 	protected void onMessageData(int messageType, String data) {
 		if (messageType == SocketIOFrame.TEXT_MESSAGE_TYPE) {
-			listener.onMessage(messageType, data, null);
+			listener.onMessage(messageType, data);
 		}
 	}
 	

@@ -29,10 +29,7 @@ import java.util.Set;
 
 import javax.servlet.http.Cookie;
 
-import com.glines.socketio.common.CloseType;
 import com.glines.socketio.common.DisconnectReason;
-import com.glines.socketio.common.SocketIOException;
-import com.glines.socketio.common.SocketIOMessageParser;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOServlet;
 
@@ -68,36 +65,23 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 		}
 
 		@Override
-		public void onClose(CloseType requestedType, CloseType result) {
-			// TODO Auto-generated method stub
-			
+		public void onMessage(int messageType, String message) {
+			broadcast(messageType, message);
 		}
 
-		@Override
-		public void onMessage(int messageType, Object message,
-				SocketIOException parseError) {
-			broadcast((String)message);
-		}
-
-		private void broadcast(String message) {
+		private void broadcast(int messageType, String message) {
 			System.out.println("Broadcasting: " + message);
 			synchronized (connections) {
 				for(BroadcastConnection c: connections) {
 					if (c != this) {
 						try {
-							c.outbound.sendMessage(message);
+							c.outbound.sendMessage(messageType, message);
 						} catch (IOException e) {
 							c.outbound.disconnect();
 						}
 					}
 				}
 			}
-		}
-
-		@Override
-		public SocketIOMessageParser getMessageParser(int messageType) {
-			// TODO Auto-generated method stub
-			return null;
 		}
 	}
 

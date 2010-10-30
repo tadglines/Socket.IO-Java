@@ -5,9 +5,7 @@ import java.io.InputStreamReader;
 
 import com.glines.socketio.client.common.SocketIOConnection;
 import com.glines.socketio.client.jre.SocketIOConnectionXHRBase;
-import com.glines.socketio.common.CloseType;
 import com.glines.socketio.common.DisconnectReason;
-import com.glines.socketio.common.SocketIOException;
 
 public class TextClient {
 	public static synchronized void print(String str) {
@@ -38,13 +36,6 @@ public class TextClient {
 					}
 
 					@Override
-					public void onClose(CloseType requestedType,
-							CloseType result) {
-						print("Closed: " + requestedType + ": " + result);
-						System.exit(0);
-					}
-
-					@Override
 					public void onDisconnect(DisconnectReason reason,
 							String errorMessage) {
 						print("Disconnected: " + reason + ": " + errorMessage);
@@ -52,8 +43,7 @@ public class TextClient {
 					}
 
 					@Override
-					public void onMessage(int messageType, Object message,
-							SocketIOException parseError) {
+					public void onMessage(int messageType, String message) {
 						print((String)message);
 					}
 					

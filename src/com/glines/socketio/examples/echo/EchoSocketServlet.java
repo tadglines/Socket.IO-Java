@@ -28,12 +28,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
 
-import com.glines.socketio.common.CloseType;
 import com.glines.socketio.common.DisconnectReason;
-import com.glines.socketio.common.SocketIOException;
-import com.glines.socketio.common.SocketIOMessageParser;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOServlet;
 
@@ -69,25 +65,12 @@ public class EchoSocketServlet extends SocketIOServlet {
 		}
 
 		@Override
-		public void onClose(CloseType requestedType, CloseType result) {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void onMessage(int messageType, Object message,
-				SocketIOException parseError) {
+		public void onMessage(int messageType, String message) {
 			try {
-				outbound.sendMessage((String)message);
+				outbound.sendMessage(messageType, message);
 			} catch (IOException e) {
 				outbound.disconnect();
 			}
-		}
-
-		@Override
-		public SocketIOMessageParser getMessageParser(int messageType) {
-			// TODO Auto-generated method stub
-			return null;
 		}
 	}
 

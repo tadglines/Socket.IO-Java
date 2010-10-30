@@ -25,11 +25,9 @@ package com.glines.socketio.server;
 
 import javax.servlet.http.HttpServletRequest;
 
-import com.glines.socketio.common.CloseType;
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
-import com.glines.socketio.common.SocketIOMessageParser;
 
 public interface SocketIOInbound {
 	interface SocketIOOutbound {
@@ -43,14 +41,14 @@ public interface SocketIOInbound {
 
 		/**
 		 * Initiate an orderly close of the connection. The state will be changed to CLOSING so no
-		 * new messages can be sent, but messages may still arrive until the distent end has
+		 * new messages can be sent, but messages may still arrive until the distant end has
 		 * acknowledged the close.
 		 * 
 		 * @param closeType
 		 */
-		void close(CloseType closeType);
+		void close();
 		
-		ConnectionState getconnectionState();
+		ConnectionState getConnectionState();
 
 		/**
 		 * Send a message to the client. This method will block if the message will not fit in the
@@ -70,7 +68,7 @@ public interface SocketIOInbound {
 		 * @throws IllegalStateException if the socket is not CONNECTED.
 		 * @throws SocketIOMessageParserException if the message type parser encode() failed.
 		 */
-		void sendMessage(int messageType, Object message) throws SocketIOException;
+		void sendMessage(int messageType, String message) throws SocketIOException;
 	}
 
 	/**
@@ -95,13 +93,6 @@ public interface SocketIOInbound {
 	 * @param errorMessage Possibly non null error message associated with the reason for disconnect.
 	 */
 	void onDisconnect(DisconnectReason reason, String errorMessage);
-	
-	/**
-	 * Called if an orderly close completed.
-	 * @param requestedType The type of close requested.
-	 * @param result The type of close actually accomplished.
-	 */
-	void onClose(CloseType requestedType, CloseType result);
 
 
 	/**
@@ -110,14 +101,5 @@ public interface SocketIOInbound {
 	 * @param message
 	 * @param parseError
 	 */
-	void onMessage(int messageType, Object message, SocketIOException parseError);
-	
-	/**
-	 * Return the parser associated with the requested message type, or null of non exists.
-	 * This will only be called once per message type the first time that message type is
-	 * encountered.
-	 * @param messageType
-	 * @return the parser or null
-	 */
-	SocketIOMessageParser getMessageParser(int messageType);
+	void onMessage(int messageType, String message);
 }

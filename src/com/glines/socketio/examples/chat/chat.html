@@ -16,21 +16,10 @@
         document.getElementById('chat').appendChild(el);
         document.getElementById('chat').scrollTop = 1000000;
       }
-      function stringify (message){
-		if (Object.prototype.toString.call(message) == '[object Object]'){
-			if (!('JSON' in window)){
-				if ('console' in window && console.error) console.error('Trying to encode as JSON, but JSON.stringify is missing.');
-				return '{ "$error": "Invalid message" }';
-			}
-			return '~j~' + JSON.stringify(message);
-		} else {
-			return String(message);
-		}
-	  };
       
       function send(){
         var val = document.getElementById('text').value;
-        socket.send(stringify(val));
+        socket.send(val);
         message({ message: ['you', val] });
         document.getElementById('text').value = '';
       }
@@ -40,19 +29,26 @@
       };
       
       var socket = new io.Socket(null, {});
-      socket.connect();
-      socket.on('message', function(obj){
-    	if (obj.substr(0, 3) == '~j~') {
-    		obj = JSON.parse(obj.substr(3));
-    	}
-        if ('buffer' in obj){
-          document.getElementById('form').style.display='block';
-          document.getElementById('chat').innerHTML = '';
-          
-          for (var i in obj.buffer) message(obj.buffer[i]);
-        } else message(obj);
+      socket.setMessageParser(socket.JSON_MESSAGE, {
+    	  encode: function(obj) {
+    		  return JSON.stringify(obj);
+    	  },
+    	  decode: function(str) {
+    		  return JSON.parse(str);
+    	  }
       });
-      socket.on('disconnect', function(obj){
+      socket.connect();
+      socket.on('message', function(mtype, obj){
+    	if (mtype == socket.JSON_MESSAGE) {
+            if ('buffer' in obj){
+                document.getElementById('form').style.display='block';
+                document.getElementById('chat').innerHTML = '';
+                
+                for (var i in obj.buffer) message(obj.buffer[i]);
+            } else message(obj);
+    	}
+      });
+      socket.on('disconnect', function(reason, error){
           var el = document.createElement('p');
           el.innerHTML = '<b>Disconnected</b>';
           document.getElementById('chat').appendChild(el);

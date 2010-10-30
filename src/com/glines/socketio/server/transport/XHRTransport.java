@@ -14,7 +14,6 @@ import org.eclipse.jetty.continuation.ContinuationSupport;
 import org.eclipse.jetty.util.IO;
 import org.eclipse.jetty.util.URIUtil;
 
-import com.glines.socketio.common.CloseType;
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
@@ -38,6 +37,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		private boolean is_open = false;
 		private Continuation continuation = null;
 		private final boolean isConnectionPersistant;
+		private boolean disconnectWhenEmpty = false;
 
 		XHRSessionHelper(SocketIOSession session, boolean isConnectionPersistant) {
 			this.session = session;
@@ -58,32 +58,29 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		
 		@Override
 		public void disconnect() {
-			try {
-				sendMessage(SocketIOFrame.Type.CLOSE, "close");
-			} catch (SocketIOException e) {
-				abort();
-			}
+			session.onDisconnect(DisconnectReason.DISCONNECT);
+			abort();
 		}
 
 		@Override
-		public void close(CloseType closeType) {
-			throw new UnsupportedOperationException();
+		public void close() {
+			session.startClose();
 		}
 
 		@Override
-		public ConnectionState getconnectionState() {
-			throw new UnsupportedOperationException();
+		public ConnectionState getConnectionState() {
+			return session.getConnectionState();
 		}
 
 		@Override
-		public void sendMessage(SocketIOFrame.Type type, String message)
+		public void sendMessage(SocketIOFrame frame)
 				throws SocketIOException {
 			if (is_open) {
 				System.out.println("Session["+session.getSessionId()+"]: " +
-						"sendMessage: [" + type + "]: " + message);
+						"sendMessage: [" + frame.getFrameType() + "]: " + frame.getData());
 				if (continuation != null && continuation.isInitial()) {
 					List<String> messages = buffer.drainMessages();
-					messages.add(SocketIOFrame.encode(type, message));
+					messages.add(frame.encode());
 					if (messages.size() > 0) {
 						StringBuilder data = new StringBuilder();
 						for (String msg: messages) {
@@ -97,7 +94,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 						}
 					}
 				} else {
-					String data = SocketIOFrame.encode(type, message);
+					String data = frame.encode();
 					if (continuation != null && continuation.isSuspended() &&
 							buffer.getAvailableBytes() < data.length()) {
 						continuation.resume();
@@ -117,21 +114,14 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		}
 
 		@Override
-		public void sendMessage(SocketIOFrame message) throws SocketIOException {
-			sendMessage(message.getType(), message.getData());
-		}
-
-		@Override
 		public void sendMessage(String message) throws SocketIOException {
-			sendMessage(SocketIOFrame.Type.TEXT, message);
+			sendMessage(SocketIOFrame.TEXT_MESSAGE_TYPE, message);
 		}
 
 		@Override
-		public void sendMessage(int messageType, Object message)
+		public void sendMessage(int messageType, String message)
 				throws SocketIOException {
-			if (messageType != SocketIOFrame.TEXT_MESSAGE_TYPE || message instanceof String)
-				throw new UnsupportedOperationException();
-			sendMessage(SocketIOFrame.Type.TEXT, (String)message);
+			sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
 		}
 
 		@Override
@@ -171,14 +161,18 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 							}
 							writeData(continuation.getServletResponse(), data.toString());
 							if (isConnectionPersistant) {
-								continuation.suspend(response);
+								if (!disconnectWhenEmpty) {
+									continuation.suspend(response);
+								}
 							} else {
 								finishSend(response);
 								request.removeAttribute(CONTINUATION_KEY);
 							}
 							session.startHeartbeatTimer();
 						} else {
-							continuation.suspend(response);
+							if (!disconnectWhenEmpty) {
+								continuation.suspend(response);
+							}
 						}
 					} else if (!isConnectionPersistant) {
 						if (cont != null) {
@@ -200,7 +194,11 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 								startSend(response);
 								writeData(response, data.toString());
 								finishSend(response);
-								session.startTimeoutTimer();
+								if (!disconnectWhenEmpty) {
+									session.startTimeoutTimer();
+								} else {
+									abort();
+								}
 							}
 						} else {
 							session.clearTimeoutTimer();
@@ -259,16 +257,22 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 			if (continuation != null && cont == continuation) {
 				if (isConnectionPersistant) {
 					is_open = false;
-					session.onDisconnect(DisconnectReason.DISCONNECT);
+					if (!disconnectWhenEmpty) {
+						session.onDisconnect(DisconnectReason.DISCONNECT);
+					}
 					continuation = null;
-					session.onShutdown();
+					abort();
 				} else {
 					continuation = null;
-					if (!is_open && buffer.isEmpty()) {
+					if (!is_open && buffer.isEmpty() && !disconnectWhenEmpty) {
 						session.onDisconnect(DisconnectReason.DISCONNECT);
 						abort();
 					}
-					session.startTimeoutTimer();
+					if (disconnectWhenEmpty) {
+						abort();
+					} else {
+						session.startTimeoutTimer();
+					}
 				}
 			}
 		}
@@ -280,7 +284,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 					is_open = false;
 					session.onDisconnect(DisconnectReason.TIMEOUT);
 					continuation = null;
-					session.onShutdown();
+					abort();
 				} else {
 					continuation = null;
 					if (!is_open && buffer.isEmpty()) {
@@ -323,6 +327,11 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		}
 
 		@Override
+		public void disconnectWhenEmpty() {
+			disconnectWhenEmpty = true;
+		}
+		
+		@Override
 		public void abort() {
 			session.clearHeartbeatTimer();
 			session.clearTimeoutTimer();
@@ -332,7 +341,6 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 					continuation.complete();
 				}
 				continuation = null;
-				session.onShutdown();
 			}
 			buffer.setListener(new TransportBuffer.BufferListener() {
 				@Override
@@ -346,6 +354,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 				}
 			});
 			buffer.clear();
+			session.onShutdown();
 		}
 	}
 

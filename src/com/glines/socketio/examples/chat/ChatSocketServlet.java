@@ -33,10 +33,9 @@ import javax.servlet.http.Cookie;
 
 import org.eclipse.jetty.util.ajax.JSON;
 
-import com.glines.socketio.common.CloseType;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
-import com.glines.socketio.common.SocketIOMessageParser;
+import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOServlet;
 
@@ -62,12 +61,12 @@ public class ChatSocketServlet extends SocketIOServlet {
 				connections.add(this);
 			}
 			try {
-				outbound.sendMessage("~j~" + JSON.toString(
+				outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
 						Collections.singletonMap("buffer", new String[]{})));
 			} catch (SocketIOException e) {
 				outbound.disconnect();
 			}
-			broadcast("~j~" + JSON.toString(
+			broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
 					Collections.singletonMap("announcement", sessionId + " connected")));
 		}
 
@@ -79,44 +78,31 @@ public class ChatSocketServlet extends SocketIOServlet {
 			synchronized (connections) {
 				connections.remove(this);
 			}
-			broadcast("~j~" + JSON.toString(
+			broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
 					Collections.singletonMap("announcement", sessionId + " disconnected")));
 		}
 
 		@Override
-		public void onClose(CloseType requestedType, CloseType result) {
-			// TODO Auto-generated method stub
-			
-		}
-
-		@Override
-		public void onMessage(int messageType, Object message,
-				SocketIOException parseError) {
+		public void onMessage(int messageType, String message) {
 			System.out.println("Recieved: " + message);
-			broadcast("~j~" + JSON.toString(
+			broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
 					Collections.singletonMap("message",
 							new String[]{sessionId.toString(), (String)message})));
 		}
 
-		private void broadcast(String message) {
+		private void broadcast(int messageType, String message) {
 			System.out.println("Broadcasting: " + message);
 			synchronized (connections) {
 				for(ChatConnection c: connections) {
 					if (c != this) {
 						try {
-							c.outbound.sendMessage(message);
+							c.outbound.sendMessage(messageType, message);
 						} catch (IOException e) {
 							c.outbound.disconnect();
 						}
 					}
 				}
 			}
-		}
-
-		@Override
-		public SocketIOMessageParser getMessageParser(int messageType) {
-			// TODO Auto-generated method stub
-			return null;
 		}
 	}
 

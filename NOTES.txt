@@ -43,3 +43,37 @@ XHR-polling semantics:
 		Client
 			If POST does not return within <timeout> then cancel it and GET and fire closed event.
 
+
+
+Close
+	local_close_state = (0=open, 1=close_sent, 2=Close ACK'ed)
+	remote_close_state = (0=open, 1=close_received, 2=Close ACK'ed)
+
+	Simple
+		Set closeTypeRequested = CLOSE_SIMPLE
+		Set state = CLOSING
+		Send Close
+		Set Close Timer
+		Wait for buffer empty
+			When Empty
+				Set closeTypeAchieved = CLOSE_SIMPLE
+				Set state = CLOSED
+				Disconnect
+			On close timeout
+				Set state = CLOSED
+				Disconnect
+	Clean
+		Set closeTypeRequested = CLOSE_SIMPLE
+		Set state = CLOSING
+		Send Close
+		Set Close Timer
+		Events
+			OnBufferEmpty
+				Set closeTypeAchieved = CLOSE_SIMPLE
+			OnClose
+				Set closeTypeAchieved = CLOSE_CLEAN
+		Wait for buffer empty
+			When Empty
+		Wait for Close from Remote
+		
+		

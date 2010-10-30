@@ -1,10 +1,8 @@
 package com.glines.socketio.client.common;
 
-import com.glines.socketio.common.CloseType;
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
-import com.glines.socketio.common.SocketIOMessageParser;
 
 public interface SocketIOConnection {
 	interface Factory {
@@ -14,10 +12,8 @@ public interface SocketIOConnection {
 
 	interface SocketIOConnectionListener {
 		public abstract void onConnect();
-		public abstract void onClose(CloseType requestedType, CloseType result);
 		public abstract void onDisconnect(DisconnectReason reason, String errorMessage);
-		public abstract void onMessage(int messageType, Object message,
-				SocketIOException parseError);
+		public abstract void onMessage(int messageType, String message);
 	}
 
 	/**
@@ -40,10 +36,9 @@ public interface SocketIOConnection {
 	/**
 	 * Initiate an orderly close of the connection.
 	 * 
-	 * @param closeType
 	 * @throws IllegalStateException if the socket is not CONNECTED.
 	 */
-	void close(CloseType closeType);
+	void close();
 	
 	/**
 	 * Return the current socket connection state.
@@ -66,13 +61,5 @@ public interface SocketIOConnection {
 	 * @throws IllegalStateException if the socket is not CONNECTED.
 	 * @throws SocketIOMessageParserException if the message type parser encode() failed.
 	 */
-	void sendMessage(int messageType, Object message) throws SocketIOException;
-
-	/**
-	 * Associate a message parser with a particular message type.
-	 * If parser is null, remove any parser associated with the message type.
-	 * @param messageType
-	 * @param parser
-	 */
-	void setMessageParser(int messageType, SocketIOMessageParser parser);
+	void sendMessage(int messageType, String message) throws SocketIOException;
 }

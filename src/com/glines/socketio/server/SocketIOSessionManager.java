@@ -33,6 +33,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
 
@@ -50,13 +51,14 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		private final String sessionId;
 		private SocketIOInbound inbound;
 		private SessionTransportHandler handler = null;
-		private SessionState state = SessionState.OPENING;
+		private ConnectionState state = ConnectionState.CONNECTING;
 		private long hbDelay = 0;
 		private SessionTask hbDelayTask = null;
 		private long timeout = 0;
 		private SessionTask timeoutTask = null;
 		private boolean timedout = false;
-		private AtomicLong pingId = new AtomicLong(0);
+		private AtomicLong messageId = new AtomicLong(0);
+		private String closeId = null;
 
 		SessionImpl(String sessionId, SocketIOInbound inbound) {
 			this.sessionId = sessionId;
@@ -69,7 +71,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		}
 
 		@Override
-		public SessionState getSessionState() {
+		public ConnectionState getConnectionState() {
 			return state;
 		}
 
@@ -87,7 +89,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 			System.out.println("Session["+sessionId+"]: onTimeout");
 			if (!timedout) {
 				timedout = true;
-				state = SessionState.CLOSED;
+				state = ConnectionState.CLOSED;
 				onDisconnect(DisconnectReason.TIMEOUT);
 				handler.abort();
 			}
@@ -115,10 +117,10 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		}
 		
 		private void sendPing() {
-			String data = "" + pingId.incrementAndGet();
+			String data = "" + messageId.incrementAndGet();
 			System.out.println("Session["+sessionId+"]: sendPing " + data);
 			try {
-				handler.sendMessage(SocketIOFrame.Type.PING, data);
+				handler.sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.PING, 0, data));
 			} catch (SocketIOException e) {
 				handler.abort();
 			}
@@ -167,8 +169,19 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		}
 
 		@Override
+		public void startClose() {
+			state = ConnectionState.CLOSING;
+			closeId = "server";
+			try {
+				handler.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.CLOSE, 0, closeId));
+			} catch (SocketIOException e) {
+				handler.abort();
+			}
+		}
+		
+		@Override
 		public void onMessage(SocketIOFrame message) {
-			switch (message.getType()) {
+			switch (message.getFrameType()) {
 			case SESSION_ID:
 			case HEARTBEAT_INTERVAL:
 				// Ignore these two messages types as they are only intended to be from server to client.
@@ -185,7 +198,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 				System.out.println("Session["+sessionId+"]: onPong: " + message.getData());
 				onPong(message.getData());
 				break;
-			case TEXT:
+			case DATA:
 				System.out.println("Session["+sessionId+"]: onMessage: " + message.getData());
 				onMessage(message.getData());
 				break;
@@ -198,7 +211,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		@Override
 		public void onPing(String data) {
 			try {
-				handler.sendMessage(SocketIOFrame.encode(SocketIOFrame.Type.PONG, data));
+				handler.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.PONG, 0, data));
 			} catch (SocketIOException e) {
 				handler.abort();
 			}
@@ -206,17 +219,32 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 
 		@Override
 		public void onPong(String data) {
-			String ping_data = "" + pingId.get();
-			if (ping_data.equals(data)) {
-				clearTimeoutTimer();
-			}
+			clearTimeoutTimer();
 		}
 
 		@Override
 		public void onClose(String data) {
-			state = SessionState.CLOSED;
-			onDisconnect(DisconnectReason.DISCONNECT);
-			handler.abort();
+			if (state == ConnectionState.CLOSING) {
+				if (closeId != null && closeId.equals(data)) {
+					state = ConnectionState.CLOSED;
+					onDisconnect(DisconnectReason.CLOSED);
+					handler.abort();
+				} else {
+					try {
+						handler.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.CLOSE, 0, data));
+					} catch (SocketIOException e) {
+						handler.abort();
+					}
+				}
+			} else {
+				state = ConnectionState.CLOSING;
+				try {
+					handler.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.CLOSE, 0, data));
+					handler.disconnectWhenEmpty();
+				} catch (SocketIOException e) {
+					handler.abort();
+				}
+			}
 		}
 
 		@Override
@@ -233,16 +261,16 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		@Override
 		public void onConnect(SessionTransportHandler handler) {
 			if (handler == null) {
-				state = SessionState.CLOSED;
+				state = ConnectionState.CLOSED;
 				inbound = null;
 				socketIOSessions.remove(sessionId);
 			} else if (this.handler == null) {
 				this.handler = handler;
 				try {
+					state = ConnectionState.CONNECTED;
 					inbound.onConnect(handler);
-					state = SessionState.OPEN;
 				} catch (Throwable e) {
-					state = SessionState.CLOSED;
+					state = ConnectionState.CLOSED;
 					handler.abort();
 				}
 			} else {
@@ -254,7 +282,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		public void onMessage(String message) {
 			if (inbound != null) {
 				try {
-					inbound.onMessage(SocketIOFrame.TEXT_MESSAGE_TYPE, message, null);
+					inbound.onMessage(SocketIOFrame.TEXT_MESSAGE_TYPE, message);
 				} catch (Throwable e) {
 					// Ignore
 				}
@@ -267,7 +295,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 			clearTimeoutTimer();
 			clearHeartbeatTimer();
 			if (inbound != null) {
-				state = SessionState.CLOSED;
+				state = ConnectionState.CLOSED;
 				try {
 					inbound.onDisconnect(reason, null);
 				} catch (Throwable e) {
@@ -281,7 +309,15 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		public void onShutdown() {
 			System.out.println("Session["+sessionId+"]: onShutdown");
 			if (inbound != null) {
-				onDisconnect(DisconnectReason.ERROR);
+				if (state == ConnectionState.CLOSING) {
+					if (closeId != null) {
+						onDisconnect(DisconnectReason.CLOSE_FAILED);
+					} else {
+						onDisconnect(DisconnectReason.CLOSED_REMOTELY);
+					}
+				} else {
+					onDisconnect(DisconnectReason.ERROR);
+				}
 			}
 			socketIOSessions.remove(sessionId);
 		}

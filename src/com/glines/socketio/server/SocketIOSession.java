@@ -28,18 +28,11 @@ import java.io.IOException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
 
 public interface SocketIOSession {
-	enum SessionState {
-		NEW,
-		OPENING,
-		OPEN,
-		CLOSING,
-		CLOSED;
-	}
-
 	interface Factory {
 		SocketIOSession createSession(SocketIOInbound inbound);
 		SocketIOSession getSession(String sessionId);
@@ -47,8 +40,8 @@ public interface SocketIOSession {
 
 	interface SessionTransportHandler extends SocketIOInbound.SocketIOOutbound {
 		void handle(HttpServletRequest request, HttpServletResponse response, SocketIOSession session) throws IOException;
-		void sendMessage(SocketIOFrame.Type type, String data) throws SocketIOException;
 		void sendMessage(SocketIOFrame message) throws SocketIOException;
+		void disconnectWhenEmpty();
 		/**
 		 * Cause connection and all activity to be aborted and all resources to be released.
 		 * The handler is expected to call the session's onShutdown() when it is finished.
@@ -66,12 +59,12 @@ public interface SocketIOSession {
 	
 	String getSessionId();
 
-	SessionState getSessionState();
+	ConnectionState getConnectionState();
 	
 	SocketIOInbound getInbound();
 
 	SessionTransportHandler getTransportHandler();
-
+	
 	void setHeartbeat(long delay);
 	long getHeartbeat();
 	void setTimeout(long timeout);
@@ -82,6 +75,11 @@ public interface SocketIOSession {
 
 	void startHeartbeatTimer();
 	void clearHeartbeatTimer();
+
+	/**
+	 * Initiate close.
+	 */
+	void startClose();
 
 	void onMessage(SocketIOFrame message);
 	void onPing(String data);

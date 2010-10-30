@@ -89,6 +89,90 @@ if (typeof window != 'undefined'){
 
 (function(){
 	
+	var Frame = {
+			//
+			FRAME_CHAR: '~',
+			// Control Codes
+			CLOSE_CODE: 0,
+			SESSION_ID_CODE: 1,
+			TIMEOUT_CODE: 2,
+			PING_CODE: 3,
+			PONG_CODE: 4,
+			DATA_CODE: 0xE,
+			FRAGMENT_CODE: 0xF,
+
+			// Core Message Types
+			TEXT_MESSAGE_TYPE: 0,
+			JSON_MESSAGE_TYPE: 1,
+			
+			// Methods
+			encode: function(ftype, mtype, data) {
+				if (!!mtype) {
+					return this.FRAME_CHAR + ftype.toString(16) + mtype.toString(16)
+							+ this.FRAME_CHAR + data.length.toString(16)
+							+ this.FRAME_CHAR + data;
+				} else {
+					return this.FRAME_CHAR + ftype.toString(16)
+							+ this.FRAME_CHAR + data.length.toString(16)
+							+ this.FRAME_CHAR + data;
+				}
+			},
+			
+			decode: function(data) {
+				var frames = [];
+				var idx = 0;
+				var start = 0;
+				var end = 0;
+				var ftype = 0;
+				var mtype = 0;
+				var size = 0;
+
+				// Parse the data and silently ignore any part that fails to parse properly.
+				while (data.length > idx && data.charAt(idx) == this.FRAME_CHAR) {
+					ftype = 0;
+					mtype = 0;
+					start = idx + 1;
+					end = data.indexOf(this.FRAME_CHAR, start);
+
+					if (-1 == end || start == end ||
+						!/[0-9A-Fa-f]+/.test(data.substring(start, end))) {
+						break;
+					}
+					
+					ftype = parseInt(data.substring(start, start+1), 16);
+
+					if (end-start > 1) {
+						if (ftype == this.DATA_CODE || ftype == this.FRAGEMENT_CODE) {
+							mtype = parseInt(data.substring(start+1, end), 16);
+						} else {
+							break;
+						}
+					}
+
+					start = end + 1;
+					end = data.indexOf(this.FRAME_CHAR, start);
+
+					if (-1 == end || start == end ||
+						!/[0-9A-Fa-f]+/.test(data.substring(start, end))) {
+						break;
+					}
+					
+					var size = parseInt(data.substring(start, end), 16);
+
+					start = end + 1;
+					end = start + size;
+
+					if (data.length < end) {
+						break;
+					}
+
+					frames.push({ftype: ftype, mtype: mtype, data: data.substring(start, end)});
+					idx = end;
+				}
+				return frames;
+			}
+	};
+	
 	Transport = io.Transport = function(base, options){
 		this.base = base;
 		this.options = {
@@ -97,87 +181,38 @@ if (typeof window != 'undefined'){
 		for (var i in options) 
 			if (this.options.hasOwnProperty(i))
 				this.options[i] = options[i];
+		this.message_id = 0;
 	};
 
-	Transport.prototype.send = function(data){
-		this.rawsend(this._encode(data));
+	Transport.prototype.send = function(mtype, data){
+		this.message_id++;
+		this.rawsend(Frame.encode(Frame.DATA_CODE, mtype, data));
 	};
 
 	Transport.prototype.rawsend = function(){
 		throw new Error('Missing send() implementation');
 	};
 
+	Transport.prototype._destroy = function(){
+		throw new Error('Missing _destroy() implementation');
+	};
+
 	Transport.prototype.connect = function(){
 		throw new Error('Missing connect() implementation');
 	};
 
-	Transport.prototype._disconnect = function(){
+	Transport.prototype.disconnect = function(){
 		throw new Error('Missing disconnect() implementation');
 	};
 
-	Transport.prototype.disconnect = function(){
-		this.base.disconnecting = true;
-		this.rawsend('~3~5~close');
-		this._disconnect();
-	};
-
-	encodeMessage = function(message){
-		var str = String(message);
-		return '~6~' + str.length + '~' + str;
-	};
-	
-	Transport.prototype._encode = function(messages){
-		var ret = '', message,
-				messages = io.util.isArray(messages) ? messages : [messages];
-		for (var i = 0, l = messages.length; i < l; i++){
-			message = messages[i] === null || messages[i] === undefined ? '' : messages[i];
-			ret += encodeMessage(message);
-		}
-		return ret;
-	};
-
-	Transport.prototype._decode = function(data){
-		var messages = [], number, n, opcode;
-		do {
-			if (data.substr(0, 1) !== '~') return messages;
-			data = data.substr(1);
-			number = '', n = '';
-			for (var i = 0, l = data.length; i < l; i++){
-				n = Number(data.substr(i, 1));
-				if (data.substr(i, 1) == n){
-					number += n;
-				} else {	
-					data = data.substr(number.length)
-					number = Number(number);
-					break;
-				} 
-			}
-			opcode = number;
-
-			if (data.substr(0, 1) !== '~') return messages;
-			data = data.substr(1);
-			number = '', n = '';
-			for (var i = 0, l = data.length; i < l; i++){
-				n = Number(data.substr(i, 1));
-				if (data.substr(i, 1) == n){
-					number += n;
-				} else {	
-					data = data.substr(number.length)
-					number = Number(number);
-					break;
-				} 
-			}
-			if (data.substr(0, 1) !== '~') return messages;
-			data = data.substr(1);
-			messages.push({ opcode: opcode, data: data.substr(0, number)}); // here
-			data = data.substr(number);
-		} while(data !== '');
-		return messages;
+	Transport.prototype.close = function() {
+		this.close_id = String(this.message_id);
+		this.rawsend(Frame.encode(Frame.CLOSE_CODE, null, this.close_id));
 	};
 	
 	Transport.prototype._onData = function(data){
 		this._setTimeout();
-		var msgs = this._decode(data);
+		var msgs = Frame.decode(data);
 		if (msgs && msgs.length){
 			for (var i = 0, l = msgs.length; i < l; i++){
 				this._onMessage(msgs[i]);
@@ -194,56 +229,76 @@ if (typeof window != 'undefined'){
 	};
 	
 	Transport.prototype._onTimeout = function(){
-		this._disconnect();
+		this._timedout = true;
+		if (!!this._interval) {
+			clearInterval(this._interval);
+			this._interval = null;
+		}
+		this.disconnect();
 	};
 	
 	Transport.prototype._onMessage = function(message){
 		if (!this.sessionid){
-			if (message.opcode == 1) {
+			if (message.ftype == Frame.SESSION_ID_CODE) {
 				this.sessionid = message.data;
 				this._onConnect();
 			} else {
-				this._onDisconnect();
+				this._onDisconnect(this.base.DR_ERROR, "First frame wasn't the sesion ID!");
 			}
-		} else if (message.opcode == 2){
+		} else if (message.ftype == Frame.TIMEOUT_CODE) {
 			hg_interval = Number(message.data);
 			if (message.data == hg_interval) {
 				this.options.timeout = hg_interval*2; // Set timeout to twice the new heartbeat interval
 				this._setTimeout();
 			}
-		} else if (message.opcode == 3){
-			this._onDisconnect();
-		} else if (message.opcode == 4){
-			this._onPing(message.data);
-		} else if (message.opcode == 6){
-//			if (message.data.substr(0,3) == '~j~') {
-//				this.base._onMessage(JSON.parse(message.data.substr(3)));
-//			} else {
-				this.base._onMessage(message.data);
-//			}
+		} else if (message.ftype == Frame.CLOSE_CODE) {
+			this._onCloseFrame(message.data);
+		} else if (message.ftype == Frame.PING_CODE) {
+			this._onPingFrame(message.data);
+		} else if (message.ftype == Frame.DATA_CODE) {
+			this.base._onMessage(message.mtype, message.data);
 		} else {
-			// For now we'll ignore other opcodes.
+			// For now we'll ignore other frame types.
 		}
 	},
 	
-	Transport.prototype._onPing = function(data){
-		this.rawsend('~5~' + data.length + '~' + data); // echo
+	Transport.prototype._onPingFrame = function(data){
+		this.rawsend(Frame.encode(Frame.PONG_CODE, null, data));
 	};
 	
 	Transport.prototype._onConnect = function(){
-		this.connected = true;
-		this.connecting = false;
-		this.base.disconnecting = false;
 		this.base._onConnect();
 		this._setTimeout();
 	};
 
-	Transport.prototype._onDisconnect = function(){
-		this.connecting = false;
-		this.connected = false;
-		this.base.disconnecting = false;
+	Transport.prototype._onCloseFrame = function(data){
+		if (this.base.socketState == this.base.CLOSING) {
+			if (!!this.close_id && this.close_id == data) {
+				this.base.socketState = this.base.CLOSED;
+				this.disconnect();
+			} else {
+				/*
+				 * It's possible the server initiated a close at the same time we did and our
+				 * initial close messages passed each other like ships in the night. So, to be nice
+				 * we'll send an acknowledge of the server's close message.
+				 */
+				this.rawsend(Frame.encode(Frame.CLOSE_CODE, null, data));
+			}
+		} else {
+			this.base.socketState = this.base.CLOSING;
+			this.disconnectWhenEmpty = true;
+			this.rawsend(Frame.encode(Frame.CLOSE_CODE, null, data));
+		}
+	};
+	
+	Transport.prototype._onDisconnect = function(reason, error){
 		this.sessionid = null;
-		this.base._onDisconnect();
+		this.disconnectWhenEmpty = false;
+		if (this._timedout) {
+			reason = this.base.DR_TIMEOUT;
+			error = null;
+		}
+		this.base._onDisconnect(reason, error);
 	};
 
 	Transport.prototype._prepareUrl = function(){
@@ -312,8 +367,8 @@ if (typeof window != 'undefined'){
 			}
 			this._sendBuffer = [];
 			this._send(data);
-		} else if (this.base.disconnecting) {
-			this._disconnect();
+		} else if (!!this.disconnectWhenEmpty) {
+			this.disconnect();
 		}
 	};
 	
@@ -340,20 +395,20 @@ if (typeof window != 'undefined'){
 				if (status == 200){
 					self._checkSend();
 				} else {
-					self._onDisconnect();
+					self._onDisconnect(self.base.DR_ERROR, "POST failed!");
 				}
 			}
 		};
 		this._sendXhr.send('data=' + encodeURIComponent(data));
 	},
 	
-	XHR.prototype._disconnect = function(){
+	XHR.prototype.disconnect = function(){
 		// send disconnection signal
 		this._onDisconnect();
 		return this;
-	}
+	};
 	
-	XHR.prototype._onDisconnect = function(){
+	XHR.prototype._destroy = function(){
 		if (this._xhr){
 			this._xhr.onreadystatechange = this._xhr.onload = empty;
 			this._xhr.abort();
@@ -365,7 +420,11 @@ if (typeof window != 'undefined'){
 			this._sendXhr = null;
 		}
 		this._sendBuffer = [];
-		io.Transport.prototype._onDisconnect.call(this);
+	};
+	
+	XHR.prototype._onDisconnect = function(reason, error){
+		this._destroy();
+		io.Transport.prototype._onDisconnect.call(this, reason, error);
 	};
 	
 	XHR.prototype._request = function(url, method, multipart){
@@ -418,17 +477,45 @@ if (typeof window != 'undefined'){
 		this.socket.onclose = function(ev){ self._onClose(); };
 		return this;
 	};
-	
+
 	WS.prototype.rawsend = function(data){
 		this.socket.send(data);
-		return this;
-	}
-	
-	WS.prototype._disconnect = function(){
-		this.socket.close();
+		
+		/*
+		 * This rigmarole is required because the WebSockets specification doesn't say what happens
+		 * to buffered data when close() is called. It cannot be assumed that buffered data is
+		 * transmitted before the connection is close.
+		 */
+		if (!!this.disconnectWhenEmpty && !this._interval) {
+			var self = this;
+			self._interval = setInterval(function() {
+				if (self.socket.bufferedAmount == 0) {
+					self._disconnect();
+					clearInterval(self._interval);
+				} else if (!self.disconnectWhenEmpty ||
+						   self.socket.readyState == self.socket.CLOSED) {
+					clearInterval(self._interval);
+				}
+			}, 50);
+		}
 		return this;
 	};
 	
+	WS.prototype.disconnect = function(){
+		this.disconnectCalled = true;
+		this.socket.close();
+		return this;
+	};
+
+	WS.prototype._destroy = function(){
+		this.socket.onclose = null;
+		this.socket.onopen = null;
+		this.socket.onmessage = null;
+		this.socket.close();
+		this.socket = null;
+		return this;
+	};
+
 	WS.prototype._onOpen = function(){
 		// This is needed because the 7.1.6 version of jetty's WebSocket fails if messages are
 		// sent from inside WebSocket.onConnect() method. 
@@ -437,7 +524,12 @@ if (typeof window != 'undefined'){
 	};
 	
 	WS.prototype._onClose = function(){
-		this._onDisconnect();
+		if (!!this.disconnectCalled || this.base.socketState == this.base.CLOSED) {
+			this.disconnectCalled = false;
+			this._onDisconnect();
+		} else {
+			this._onDisconnect(this.base.DR_ERROR, "WebSocket close unexpectedly");
+		}
 		return this;
 	};
 	
@@ -495,11 +587,11 @@ if (typeof window != 'undefined'){
 	};
 	
 	Flashsocket.prototype._onClose = function(){
-		if (!this.base.connected){
+		if (this.base.socketState != this.base.CONNECTED){
 			// something failed, we might be behind a proxy, so we'll try another transport
 			this.base.options.transports.splice(io.util.indexOf(this.base.options.transports, 'flashsocket'), 1);
 			this.base.transport = this.base.getTransport();
-			this.base.connecting = false;
+			this.base.socketState = this.base.CLOSED;
 			this.base.connect();
 			return;
 		}
@@ -575,9 +667,9 @@ if (typeof window != 'undefined'){
 		CollectGarbage();
 	};
 	
-	HTMLFile.prototype._disconnect = function(){
+	HTMLFile.prototype.disconnect = function(){
 		this._destroy();
-		return io.Transport.XHR.prototype._disconnect.call(this);
+		return io.Transport.XHR.prototype.disconnect.call(this);
 	};
 	
 	HTMLFile.check = function(){
@@ -831,7 +923,39 @@ JSONPPolling.xdomainCheck = function(){
 	
 	var Socket = io.Socket = function(host, options){
 		this.host = host || document.domain;
-		this.options = {
+		for (var i in options) 
+			if (this.options.hasOwnProperty(i))
+				this.options[i] = options[i];
+		this.transport = this.getTransport();
+		if (!this.transport && 'console' in window) console.error('No transport available');
+	};
+
+	// Constants
+	// Socket state
+	Socket.prototype.CONNECTING = 0;
+	Socket.prototype.CONNECTED = 1;
+	Socket.prototype.CLOSING = 2;
+	Socket.prototype.CLOSED = 3;
+
+	// Disconnect Reason
+	Socket.prototype.DR_CONNECT_FAILED = 1;
+	Socket.prototype.DR_DISCONNECT = 2;
+	Socket.prototype.DR_TIMEOUT = 3;
+	Socket.prototype.DR_CLOSE_FAILED = 4;
+	Socket.prototype.DR_ERROR = 5;
+	Socket.prototype.DR_CLOSED_REMOTELY = 6;
+	Socket.prototype.DR_CLOSED = 7;
+
+	// Event Types
+	Socket.prototype.CONNECT_EVENT = 'connect';
+	Socket.prototype.DISCONNECT_EVENT = 'disconnect';
+	Socket.prototype.MESSAGE_EVENT = 'message';
+
+	// Message Types
+	Socket.prototype.TEXT_MESSAGE = 0;
+	Socket.prototype.JSON_MESSAGE = 1;
+
+	Socket.prototype.options = {
 			secure: false,
 			document: document,
 			port: document.location.port || 80,
@@ -849,19 +973,11 @@ JSONPPolling.xdomainCheck = function(){
 			tryTransportsOnConnectTimeout: true,
 			rememberTransport: true
 		};
-		for (var i in options) 
-			if (this.options.hasOwnProperty(i))
-				this.options[i] = options[i];
-		this.connected = false;
-		this.connecting = false;
-		this.disconnecting = false;
-		this.wasConnected = false;
-		this.wasConnecting = false;
-		this._events = {};
-		this.transport = this.getTransport();
-		if (!this.transport && 'console' in window) console.error('No transport available');
-	};
-	
+
+	Socket.prototype.socketState = Socket.prototype.CLOSED;
+	Socket.prototype._events = {};
+	Socket.prototype._parsers = {};
+
 	Socket.prototype.getTransport = function(override){
 		var transports = override || this.options.transports, match;
 		if (this.options.rememberTransport && !override){
@@ -882,41 +998,100 @@ JSONPPolling.xdomainCheck = function(){
 	};
 	
 	Socket.prototype.connect = function(){
-		if (this.transport && !this.connected){
-			if (this.connecting) this.disconnect();
-			this.connecting = true;
-			this.transport.connect();
-			if (this.options.connectTimeout){
-				var self = this;
-				setTimeout(function(){
-					if (!self.connected){
-						self.disconnect();
-						if (self.options.tryTransportsOnConnectTimeout && !self._rememberedTransport){
-							var remainingTransports = [], transports = self.options.transports;
-							for (var i = 0, transport; transport = transports[i]; i++){
-								if (transport != self.transport.type) remainingTransports.push(transport);
-							}
-							if (remainingTransports.length){
-								self.transport = self.getTransport(remainingTransports);
-								self.connect();
+		if (this.socketState != this.CLOSED) throw ("Socket not closed!");
+		if (!this.transport) throw ("No available transports!");
+		
+		var self = this;
+		var _connect = function() {
+			if (self.transport) {
+				if (self.socketState == self.CONNECTING) self.transport._destroy();
+				self.socketState = self.CONNECTING;
+				self.transport.connect();
+				if (self.options.connectTimeout){
+					setTimeout(function(){
+						if (self.socketState == self.CONNECTING){
+							self.transport._destroy();
+							if (self.options.tryTransportsOnConnectTimeout && !self._rememberedTransport){
+								var remainingTransports = [], transports = self.options.transports;
+								for (var i = 0, transport; transport = transports[i]; i++){
+									if (transport != self.transport.type) remainingTransports.push(transport);
+								}
+								if (remainingTransports.length){
+									self.transport = self.getTransport(remainingTransports);
+									_connect();
+								} else {
+									self.onDisconnect(self.DR_CONNECT_FAILED, "All transports failed");
+								}
+							} else {
+								self.onDisconnect(self.DR_CONNECT_FAILED, "Connection attempt timed out");
 							}
 						}
-					}
-				}, this.options.connectTimeout)
+					}, self.options.connectTimeout);
+				}
+			} else {
+				self.onDisconnect(self.DR_CONNECT_FAILED, "All transports failed");
 			}
+		};
+		_connect();
+		return this;
+	};
+	
+	Socket.prototype.send = function(){
+		if (this.socketState == this.CLOSING) throw ("Socket is closing!");
+		if (this.socketState != this.CONNECTED) throw ("Socket not connected!");
+		var mtype = 0;
+		var data;
+		if (arguments.length == 1) {
+			data = arguments[0];
+		} else if (arguments.length >= 2) {
+			mtype = Number(arguments[0]);
+			data = arguments[1];
+		} else {
+			throw "Socket.send() requires at least one argument";
 		}
+
+		if (isNaN(mtype)) {
+			throw "Invalid message type, must be a number!";
+		}
+
+		if (mtype < 0 || mtype > 2147483648) {
+			throw "Invalid message type, must be greater than 0 and less than 2^31!";
+		}
+		
+		var parser = this._parsers[mtype];
+		
+		if (parser) {
+			data = String(parser.encode(data));
+		}
+
+		this.transport.send(mtype, data);
 		return this;
 	};
 	
-	Socket.prototype.send = function(data){
-		if (!this.transport || !this.transport.connected) return this._queue(data);
-		if (!this.disconnecting) this.transport.send(data);
+	Socket.prototype.close = function() {
+		this.socketState = this.CLOSING;
+		this.transport.close();
 		return this;
 	};
-	
+
 	Socket.prototype.disconnect = function(){
 		this.transport.disconnect();
 		return this;
+	};
+	
+	Socket.prototype.setMessageParser = function(messageType, parser) {
+		var mtype = Number(messageType);
+		if (mtype != messageType) {
+			throw "Invalid message type, it must be a number!";
+		}
+		if (!parser) {
+			delete this._parsers[mtype];
+		} else {
+			if (typeof parser.encode != 'function' || typeof parser.decode != 'function') {
+				throw "Invalid parser!";
+			}
+			this._parsers[mtype] = parser;
+		}
 	};
 	
 	Socket.prototype.on = function(name, fn){
@@ -941,42 +1116,50 @@ JSONPPolling.xdomainCheck = function(){
 		return this;
 	};
 	
-	Socket.prototype._queue = function(message){
-		if (!('_queueStack' in this)) this._queueStack = [];
-		this._queueStack.push(message);
-		return this;
-	};
-	
-	Socket.prototype._doQueue = function(){
-		if (!('_queueStack' in this) || !this._queueStack.length) return this;
-		this.transport.send(this._queueStack);
-		this._queueStack = [];
-		return this;
-	};
-	
 	Socket.prototype._isXDomain = function(){
 		return this.host !== document.domain;
 	};
 	
 	Socket.prototype._onConnect = function(){
-		this.connected = true;
-		this.connecting = false;
-		this._doQueue();
+		this.socketState = this.CONNECTED;
 		if (this.options.rememberTransport) this.options.document.cookie = 'socketio=' + encodeURIComponent(this.transport.type);
-		this.fire('connect');
+		this.fire(this.CONNECT_EVENT);
 	};
 	
-	Socket.prototype._onMessage = function(data){
-		this.fire('message', [data]);
+	Socket.prototype._onMessage = function(mtype, data){
+		var parser = this._parsers[mtype];
+		var obj = data;
+		var error = null;
+		
+		if (parser) {
+			try {
+				obj = parser.decode(data);
+			} catch (e) {
+				error = e;
+			}
+		}
+
+		this.fire(this.MESSAGE_EVENT, [mtype, obj, error]);
 	};
 	
-	Socket.prototype._onDisconnect = function(){
-		this.wasConnected = this.connected;
-		this.wasConnecting = this.connecting;
-		this.connected = false;
-		this.connecting = false;
-		this._queueStack = [];
-		this.fire('disconnect');
+	Socket.prototype._onDisconnect = function(disconnectReason, errorMessage){
+		var state = this.socketState;
+		this.socketState = this.CLOSED;
+		if (state == this.CLOSED) {
+			this.fire(this.DISCONNECT_EVENT, [this.DR_CLOSED, errorMessage]);
+		} else if (state == this.CLOSING) {
+			if (!!this.closeId) {
+				this.fire(this.DISCONNECT_EVENT, [this.DR_CLOSE_FAILED, errorMessage]);
+			} else {
+				this.fire(this.DISCONNECT_EVENT, [this.DR_CLOSED_REMOTELY, errorMessage]);
+			}
+		} else if (state == this.CONNECTING) {
+			this.fire(this.DISCONNECT_EVENT, [this.DR_CONNECT_FAILED, errorMessage]);
+		} else if (!disconnectReason) {
+			this.fire(this.DISCONNECT_EVENT, [this.DR_DISCONNECT, errorMessage]);
+		} else {
+			this.fire(this.DISCONNECT_EVENT, [disconnectReason, errorMessage]);
+		}
 	};
 	
 	Socket.prototype.addListener = Socket.prototype.addEvent = Socket.prototype.addEventListener = Socket.prototype.on;

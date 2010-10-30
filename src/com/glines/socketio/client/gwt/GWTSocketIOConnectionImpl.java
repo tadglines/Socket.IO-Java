@@ -1,11 +1,9 @@
 package com.glines.socketio.client.gwt;
 
 import com.glines.socketio.client.common.SocketIOConnection;
-import com.glines.socketio.common.CloseType;
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
-import com.glines.socketio.common.SocketIOMessageParser;
 import com.google.gwt.core.client.JavaScriptObject;
 
 public class GWTSocketIOConnectionImpl implements SocketIOConnection {
@@ -15,11 +13,11 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 			socket.on('connect', $entry(function() {
       			impl.@com.glines.socketio.client.gwt.GWTSocketIOConnectionImpl::onConnect()();
     		}));
-			socket.on('message', $entry(function(message) {
-      			impl.@com.glines.socketio.client.gwt.GWTSocketIOConnectionImpl::onMessage(Ljava/lang/String;)(message);
+			socket.on('message', $entry(function(messageType, message) {
+      			impl.@com.glines.socketio.client.gwt.GWTSocketIOConnectionImpl::onMessage(ILjava/lang/String;)(messageType, message);
     		}));
-			socket.on('disconnect', $entry(function() {
-      			impl.@com.glines.socketio.client.gwt.GWTSocketIOConnectionImpl::onDisconnect()();
+			socket.on('disconnect', $entry(function(dr, message) {
+      			impl.@com.glines.socketio.client.gwt.GWTSocketIOConnectionImpl::onDisconnect(ILjava/lang/String;)(dr, message);
     		}));
     		return socket;
 		}-*/;
@@ -27,23 +25,15 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 		protected SocketIOImpl() {
 	    }
 
+	    public native int getSocketState() /*-{this.socketState;}-*/;
+
 	    public native void connect() /*-{this.connect();}-*/;
+
+	    public native void close() /*-{this.close();}-*/;
 
 	    public native void disconnect() /*-{this.disconnect();}-*/;
 
-	    public native void _disconnect() /*-{this.transport._disconnect();}-*/;
-
-	    public native void send(String data) /*-{this.send(data);}-*/;
-
-	    public native boolean isConnecting() /*-{return this.connecting;}-*/;
-
-	    public native boolean isConnected() /*-{return this.connected;}-*/;
-
-	    public native boolean isDisconnecting() /*-{return this.disconnecting;}-*/;
-
-	    public native boolean wasConnecting() /*-{return this.wasConnecting;}-*/;
-
-	    public native boolean wasConnected() /*-{return this.wasConnected;}-*/;
+	    public native void send(int messageType, String data) /*-{this.send(messageType, data);}-*/;
 	}
 	
 	
@@ -51,7 +41,6 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 	private final String host;
 	private final String port;
 	private SocketIOImpl socket = null;
-	private ConnectionState state = ConnectionState.CLOSED;
 
 	GWTSocketIOConnectionImpl(SocketIOConnection.SocketIOConnectionListener listener,
 			String host, short port) {
@@ -70,56 +59,53 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 			socket = SocketIOImpl.create(this, host, port);
 		}
 
-		if (ConnectionState.CLOSED != state) {
-			throw new IllegalStateException("Invalid connection state X " + state);
+		if (ConnectionState.CLOSED != getConnectionState()) {
+			throw new IllegalStateException("Connection isn't closed!");
 		}
-		state = ConnectionState.CONNECTING;
 		socket.connect();
 	}
 
 	@Override
-	public void close(CloseType closeType) {
-		throw new UnsupportedOperationException();
+	public void close() {
+		if (ConnectionState.CONNECTED == getConnectionState()) {
+			socket.close();
+		}
 	}
 	
 	@Override
 	public void disconnect() {
-		if (ConnectionState.CONNECTED == state) {
-			state = ConnectionState.CLOSING;
+		if (ConnectionState.CLOSED != getConnectionState()) {
 			socket.disconnect();
-		} else if (ConnectionState.CONNECTING == state) {
-			state = ConnectionState.CLOSED;
-			socket._disconnect();
 		}
 	}
 
 	@Override
 	public ConnectionState getConnectionState() {
+		ConnectionState state;
+		if (socket != null) {
+			state = ConnectionState.fromInt(socket.getSocketState());
+		} else {
+			state = ConnectionState.CLOSED;
+		}
 		return state;
 	}
 
 	@Override
 	public void sendMessage(String message) throws SocketIOException {
-		if (ConnectionState.CONNECTED != state) {
+		sendMessage(0, message);
+	}
+
+	@Override
+	public void sendMessage(int messageType, String message)
+			throws SocketIOException {
+		if (ConnectionState.CONNECTED != getConnectionState()) {
 			throw new IllegalStateException("Not connected");
 		}
-		socket.send(message);
-	}
-
-	@Override
-	public void sendMessage(int messageType, Object message)
-			throws SocketIOException {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public void setMessageParser(int messageType, SocketIOMessageParser parser) {
-		throw new UnsupportedOperationException();
+		socket.send(messageType, message);
 	}
 
 	@SuppressWarnings("unused")
 	private void onConnect() {
-		state = ConnectionState.CONNECTED;
 		try {
 			listener.onConnect();
 		} catch (Exception e) {
@@ -128,19 +114,19 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 	}
 
 	@SuppressWarnings("unused")
-	private void onDisconnect() {
-		state = ConnectionState.CLOSED;
+	private void onDisconnect(int dr, String errorMessage) {
+		DisconnectReason reason = DisconnectReason.fromInt(dr);
 		try {
-			listener.onDisconnect(socket.wasConnecting() ? DisconnectReason.CLOSE_FAILED : DisconnectReason.DISCONNECT, null);
+			listener.onDisconnect(reason, errorMessage);
 		} catch (Exception e) {
 			// Ignore
 		}
 	}
 
 	@SuppressWarnings("unused")
-	private void onMessage(String message) {
+	private void onMessage(int messageType, String message) {
 		try {
-			listener.onMessage(0, message, null);
+			listener.onMessage(messageType, message);
 		} catch (Exception e) {
 			// Ignore
 		}

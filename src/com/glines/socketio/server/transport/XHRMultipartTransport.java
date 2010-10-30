@@ -45,8 +45,8 @@ public class XHRMultipartTransport extends XHRTransport {
 		protected void customConnect(HttpServletRequest request,
 				HttpServletResponse response) throws IOException {
 			startSend(response);
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.Type.SESSION_ID, session.getSessionId()));
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.Type.HEARTBEAT_INTERVAL, "" + HEARTBEAT_DELAY));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, session.getSessionId()));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + HEARTBEAT_DELAY));
 		}
 	}
 

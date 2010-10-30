@@ -5,18 +5,19 @@ import java.util.List;
 
 public class SocketIOFrame {
 	public static final char SEPERATOR_CHAR = '~';
-	public enum Type {
+	public enum FrameType {
 		UNKNOWN(-1),
+		CLOSE(0),
 		SESSION_ID(1),
 		HEARTBEAT_INTERVAL(2),
-		CLOSE(3),
-		PING(4),
-		PONG(5),
-		TEXT(6);
+		PING(3),
+		PONG(4),
+		DATA(0xE),
+		FRAGMENT(0xF);
 
 		private int value;
 		
-		Type(int value) {
+		FrameType(int value) {
 			this.value = value;
 		}
 		
@@ -24,20 +25,22 @@ public class SocketIOFrame {
 			return value;
 		}
 		
-		public static Type fromInt(int val) {
+		public static FrameType fromInt(int val) {
 			switch (val) {
+			case 0:
+				return CLOSE;
 			case 1:
 				return SESSION_ID;
 			case 2:
 				return HEARTBEAT_INTERVAL;
 			case 3:
-				return CLOSE;
-			case 4:
 				return PING;
-			case 5:
+			case 4:
 				return PONG;
-			case 6:
-				return TEXT;
+			case 0xE:
+				return DATA;
+			case 0xF:
+				return FRAGMENT;
 			default:
 				return UNKNOWN;
 			}
@@ -47,9 +50,11 @@ public class SocketIOFrame {
 	public static final int TEXT_MESSAGE_TYPE = 0;
 	public static final int JSON_MESSAGE_TYPE = 1;
 	
-	private static boolean isNumber(String str, int start, int end) {
+	private static boolean isHexDigit(String str, int start, int end) {
 		for (int i = start; i < end; i++) {
-			if (!Character.isDigit(str.charAt(i))) {
+			char c = str.charAt(i);
+			if (!Character.isDigit(c) &&
+					c < 'A' && c > 'F' && c < 'a' && c > 'f') {
 				return false;
 			}
 		}
@@ -65,20 +70,30 @@ public class SocketIOFrame {
 			int start = idx + 1;
 			int end = data.indexOf(SEPERATOR_CHAR, start);
 
-			if (-1 == end || start == end || !isNumber(data, start, end)) {
+			if (-1 == end || start == end || !isHexDigit(data, start, end)) {
 				break;
 			}
-			
-			int type = Integer.parseInt(data.substring(start, end));
 
+			int mtype = 0;
+			int ftype = Integer.parseInt(data.substring(start, start + 1), 16);
+
+			FrameType frameType = FrameType.fromInt(ftype);
+			if (frameType == FrameType.UNKNOWN) {
+				break;
+			}
+
+			if (end - start > 1) {
+				mtype = Integer.parseInt(data.substring(start + 1, end), 16);
+			}
+			
 			start = end + 1;
 			end = data.indexOf(SEPERATOR_CHAR, start);
 
-			if (-1 == end || start == end || !isNumber(data, start, end)) {
+			if (-1 == end || start == end || !isHexDigit(data, start, end)) {
 				break;
 			}
 			
-			int size = Integer.parseInt(data.substring(start, end));
+			int size = Integer.parseInt(data.substring(start, end), 16);
 
 			start = end + 1;
 			end = start + size;
@@ -86,35 +101,44 @@ public class SocketIOFrame {
 			if (data.length() < end) {
 				break;
 			}
-
-			messages.add(new SocketIOFrame(Type.fromInt(type), data.substring(start, end)));
+			
+			messages.add(new SocketIOFrame(frameType, mtype, data.substring(start, end)));
 			idx = end;
 		}
 		
 		return messages;
 	}
 	
-	public static String encode(Type type, String data) {
+	public static String encode(FrameType type, int messageType, String data) {
 		StringBuilder str = new StringBuilder(data.length() + 16);
 		str.append(SEPERATOR_CHAR);
-		str.append(type.value());
+		str.append(Integer.toHexString(type.value()));
+		if (messageType != TEXT_MESSAGE_TYPE) {
+			str.append(Integer.toHexString(messageType));
+		}
 		str.append(SEPERATOR_CHAR);
-		str.append(data.length());
+		str.append(Integer.toHexString(data.length()));
 		str.append(SEPERATOR_CHAR);
 		str.append(data);
 		return str.toString();
 	}
 	
-	private final Type type;
+	private final FrameType frameType;
+	private final int messageType;
 	private final String data;
 	
-	public SocketIOFrame(Type type, String data) {
-		this.type = type;
+	public SocketIOFrame(FrameType frameType, int messageType, String data) {
+		this.frameType = frameType;
+		this.messageType = messageType;
 		this.data = data;
 	}
 	
-	public Type getType() {
-		return type;
+	public FrameType getFrameType() {
+		return frameType;
+	}
+	
+	public int getMessageType() {
+		return messageType;
 	}
 	
 	public String getData() {
@@ -122,6 +146,6 @@ public class SocketIOFrame {
 	}
 	
 	public String encode() {
-		return encode(type, data);
+		return encode(frameType, messageType, data);
 	}
 }
