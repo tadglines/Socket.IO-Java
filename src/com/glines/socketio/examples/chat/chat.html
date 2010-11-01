@@ -9,17 +9,25 @@
   <body>
     
     <script>
+      function addLine(txt) {
+          var el = document.createElement('p');
+          el.innerHTML = txt;
+          document.getElementById('chat').appendChild(el);
+          document.getElementById('chat').scrollTop = 1000000;
+      }
       function message(obj){
-        var el = document.createElement('p');
-        if ('announcement' in obj) el.innerHTML = '<em>' + esc(obj.announcement) + '</em>';
-        else if ('message' in obj) el.innerHTML = '<b>' + esc(obj.message[0]) + ':</b> ' + esc(obj.message[1]);
-        document.getElementById('chat').appendChild(el);
-        document.getElementById('chat').scrollTop = 1000000;
+        if ('announcement' in obj) addLine('<em>' + esc(obj.announcement) + '</em>');
+        else if ('message' in obj) addLine('<b>' + esc(obj.message[0]) + ':</b> ' + esc(obj.message[1]));
       }
       
       function send(){
         var val = document.getElementById('text').value;
-        socket.send(val);
+        if (val == 'lclose') {
+	      	addLine('<em>closing...</em>');
+        	socket.close();
+        } else {
+            socket.send(val);
+        }
         message({ message: ['you', val] });
         document.getElementById('text').value = '';
       }
@@ -27,6 +35,26 @@
       function esc(msg){
         return msg.replace(/</g, '&lt;').replace(/>/g, '&gt;');
       };
+      
+      function drname(dr) {
+    	  if (dr == 1) {
+    		  return 'CONNECT_FAILED';
+    	  } else if (dr == 2) {
+    		  return 'DISCONNECT';
+    	  } else if (dr == 3) {
+    		  return 'TIMEOUT';
+    	  } else if (dr == 4) {
+    		  return 'CLOSE_FAILED';
+    	  } else if (dr == 5) {
+    		  return 'ERROR';
+    	  } else if (dr == 6) {
+    		  return 'CLOSED_REMOTELY';
+    	  } else if (dr == 7) {
+    		  return 'CLOSED';
+    	  } else {
+    		  return 'UNKNOWN['+dr+']';
+    	  }
+      }
       
       var socket = new io.Socket(null, {});
       socket.setMessageParser(socket.JSON_MESSAGE, {
@@ -49,10 +77,7 @@
     	}
       });
       socket.on('disconnect', function(reason, error){
-          var el = document.createElement('p');
-          el.innerHTML = '<b>Disconnected</b>';
-          document.getElementById('chat').appendChild(el);
-          document.getElementById('chat').scrollTop = 1000000;
+    	  addLine('<b>Disconnected['+drname(reason)+']: '+error+'</b>');
       });
     </script>
     

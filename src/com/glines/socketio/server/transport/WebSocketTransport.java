@@ -146,7 +146,7 @@ public class WebSocketTransport extends AbstractTransport {
 
 		@Override
 		public void sendMessage(SocketIOFrame frame) throws SocketIOException {
-			if (outbound.isOpen() && session.getConnectionState() == ConnectionState.CONNECTED) {
+			if (outbound.isOpen()) {
 				System.out.println("Session["+session.getSessionId()+"]: sendMessage: [" + frame.getFrameType() + "]: " + frame.getData());
 				try {
 					outbound.sendMessage(frame.encode());
@@ -172,7 +172,11 @@ public class WebSocketTransport extends AbstractTransport {
 		@Override
 		public void sendMessage(int messageType, String message)
 				throws SocketIOException {
-			sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
+			if (outbound.isOpen() && session.getConnectionState() == ConnectionState.CONNECTED) {
+				sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
+			} else {
+				throw new SocketIOClosedException();
+			}
 		}
 
 		/*

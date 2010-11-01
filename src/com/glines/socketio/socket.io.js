@@ -206,7 +206,7 @@ if (typeof window != 'undefined'){
 	};
 
 	Transport.prototype.close = function() {
-		this.close_id = String(this.message_id);
+		this.close_id = 'client';
 		this.rawsend(Frame.encode(Frame.CLOSE_CODE, null, this.close_id));
 	};
 	
@@ -272,6 +272,7 @@ if (typeof window != 'undefined'){
 	};
 
 	Transport.prototype._onCloseFrame = function(data){
+		if (window.console) console.log('Close: ' + data);
 		if (this.base.socketState == this.base.CLOSING) {
 			if (!!this.close_id && this.close_id == data) {
 				this.base.socketState = this.base.CLOSED;
@@ -292,6 +293,7 @@ if (typeof window != 'undefined'){
 	};
 	
 	Transport.prototype._onDisconnect = function(reason, error){
+		if (this._timeout) clearTimeout(this._timeout);
 		this.sessionid = null;
 		this.disconnectWhenEmpty = false;
 		if (this._timedout) {
@@ -399,7 +401,7 @@ if (typeof window != 'undefined'){
 				}
 			}
 		};
-		this._sendXhr.send('data=' + encodeURIComponent(data));
+		this._sendXhr.send(data);
 	},
 	
 	XHR.prototype.disconnect = function(){
@@ -432,7 +434,7 @@ if (typeof window != 'undefined'){
 		if (multipart) req.multipart = true;
 		req.open(method || 'GET', this._prepareUrl() + (url ? '/' + url : ''));
 		if (method == 'POST' && 'setRequestHeader' in req){
-			req.setRequestHeader('Content-type', 'application/x-www-form-urlencoded; charset=utf-8');
+			req.setRequestHeader('Content-type', 'text/plain; charset=utf-8');
 		}
 		return req;
 	};
@@ -490,7 +492,7 @@ if (typeof window != 'undefined'){
 			var self = this;
 			self._interval = setInterval(function() {
 				if (self.socket.bufferedAmount == 0) {
-					self._disconnect();
+					self.disconnect();
 					clearInterval(self._interval);
 				} else if (!self.disconnectWhenEmpty ||
 						   self.socket.readyState == self.socket.CLOSED) {
@@ -508,11 +510,13 @@ if (typeof window != 'undefined'){
 	};
 
 	WS.prototype._destroy = function(){
-		this.socket.onclose = null;
-		this.socket.onopen = null;
-		this.socket.onmessage = null;
-		this.socket.close();
-		this.socket = null;
+		if (this.socket) {
+			this.socket.onclose = null;
+			this.socket.onopen = null;
+			this.socket.onmessage = null;
+			this.socket.close();
+			this.socket = null;
+		}
 		return this;
 	};
 
@@ -528,7 +532,7 @@ if (typeof window != 'undefined'){
 			this.disconnectCalled = false;
 			this._onDisconnect();
 		} else {
-			this._onDisconnect(this.base.DR_ERROR, "WebSocket close unexpectedly");
+			this._onDisconnect(this.base.DR_ERROR, "WebSocket closed unexpectedly");
 		}
 		return this;
 	};
@@ -587,7 +591,7 @@ if (typeof window != 'undefined'){
 	};
 	
 	Flashsocket.prototype._onClose = function(){
-		if (this.base.socketState != this.base.CONNECTED){
+		if (this.base.socketState == this.base.CONNECTING){
 			// something failed, we might be behind a proxy, so we'll try another transport
 			this.base.options.transports.splice(io.util.indexOf(this.base.options.transports, 'flashsocket'), 1);
 			this.base.transport = this.base.getTransport();
@@ -708,9 +712,21 @@ if (typeof window != 'undefined'){
 	
 	XHRMultipart.prototype._get = function(){
 		var self = this;
+		var lastReadyState = 4;
 		this._xhr = this._request('', 'GET', true);
 		this._xhr.onreadystatechange = function(){
-			if (self._xhr.readyState == 3) self._onData(self._xhr.responseText);
+			// Normally the readyState will progress from 1-4 (e.g. 1,2,3,4) for a normal part.
+			// But on disconnect, the readyState will go from 1 to 4 skipping 2 and 3.
+			// Thanks to Wilfred Nilsen (http://www.mail-archive.com/mozilla-xpcom@mozilla.org/msg04845.html) for discovering this.
+			// So, if the readyState skips a step and equals 4, then the connection has dropped.
+			if (self._xhr.readyState - lastReadyState > 1 && self._xhr.readyState == 4) {
+				self._onDisconnect(self.base.DR_ERROR, "XHR Connection dropped unexpectedly");
+			} else {
+				lastReadyState = self._xhr.readyState;
+				if (self._xhr.readyState == 3) {
+					self._onData(self._xhr.responseText);
+				}
+			}
 		};
 		this._xhr.send();
 	};
@@ -960,7 +976,8 @@ JSONPPolling.xdomainCheck = function(){
 			document: document,
 			port: document.location.port || 80,
 			resource: 'socket.io',
-			transports: ['websocket', 'flashsocket', 'htmlfile', 'xhr-multipart', 'xhr-polling', 'jsonp-polling'],
+//			transports: ['websocket', 'flashsocket', 'htmlfile', 'xhr-multipart', 'xhr-polling', 'jsonp-polling'],
+			transports: ['websocket', 'htmlfile', 'xhr-multipart', 'xhr-polling', 'jsonp-polling'],
 			transportOptions: {
 				'xhr-polling': {
 					timeout: 25000 // based on polling duration default

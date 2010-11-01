@@ -85,9 +85,13 @@ public class ChatSocketServlet extends SocketIOServlet {
 		@Override
 		public void onMessage(int messageType, String message) {
 			System.out.println("Recieved: " + message);
-			broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
-					Collections.singletonMap("message",
-							new String[]{sessionId.toString(), (String)message})));
+			if (message.equals("close")) {
+				outbound.close();
+			} else {
+				broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+						Collections.singletonMap("message",
+								new String[]{sessionId.toString(), (String)message})));
+			}
 		}
 
 		private void broadcast(int messageType, String message) {

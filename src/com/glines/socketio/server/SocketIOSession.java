@@ -57,6 +57,8 @@ public interface SocketIOSession {
 		boolean cancel();
 	}
 	
+	String generateRandomString(int length);
+	
 	String getSessionId();
 
 	ConnectionState getConnectionState();

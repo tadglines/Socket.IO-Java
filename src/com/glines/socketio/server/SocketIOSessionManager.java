@@ -43,9 +43,19 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 	      .toCharArray();
 	private static final int SESSION_ID_LENGTH = 20;
 
-	private Random random = new SecureRandom();
+	private static Random random = new SecureRandom();
 	private ConcurrentMap<String, SocketIOSession> socketIOSessions = new ConcurrentHashMap<String, SocketIOSession>();
 	private ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+
+	private static String generateRandomString(int length) {
+	    StringBuilder result = new StringBuilder(length);
+	    byte[] bytes = new byte[length];
+	    random.nextBytes(bytes);
+	    for (int i = 0; i < bytes.length; i++) {
+	      result.append(BASE64_ALPHABET[bytes[i] & 0x3F]);
+	    }
+	    return result.toString();
+	}
 
 	private class SessionImpl implements SocketIOSession {
 		private final String sessionId;
@@ -63,6 +73,11 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		SessionImpl(String sessionId, SocketIOInbound inbound) {
 			this.sessionId = sessionId;
 			this.inbound = inbound;
+		}
+
+		@Override
+		public String generateRandomString(int length) {
+			return SocketIOSessionManager.generateRandomString(length);
 		}
 		
 		@Override
@@ -173,7 +188,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 			state = ConnectionState.CLOSING;
 			closeId = "server";
 			try {
-				handler.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.CLOSE, 0, closeId));
+				handler.sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.CLOSE, 0, closeId));
 			} catch (SocketIOException e) {
 				handler.abort();
 			}
@@ -211,7 +226,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		@Override
 		public void onPing(String data) {
 			try {
-				handler.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.PONG, 0, data));
+				handler.sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.PONG, 0, data));
 			} catch (SocketIOException e) {
 				handler.abort();
 			}
@@ -231,7 +246,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 					handler.abort();
 				} else {
 					try {
-						handler.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.CLOSE, 0, data));
+						handler.sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.CLOSE, 0, data));
 					} catch (SocketIOException e) {
 						handler.abort();
 					}
@@ -239,7 +254,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 			} else {
 				state = ConnectionState.CLOSING;
 				try {
-					handler.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.CLOSE, 0, data));
+					handler.sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.CLOSE, 0, data));
 					handler.disconnectWhenEmpty();
 				} catch (SocketIOException e) {
 					handler.abort();
@@ -324,13 +339,7 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 	}
 	
 	private String generateSessionId() {
-	    StringBuilder result = new StringBuilder(SESSION_ID_LENGTH);
-	    byte[] bytes = new byte[SESSION_ID_LENGTH];
-	    random.nextBytes(bytes);
-	    for (int i = 0; i < bytes.length; i++) {
-	      result.append(BASE64_ALPHABET[bytes[i] & 0x3F]);
-	    }
-	    return result.toString();
+		return generateRandomString(SESSION_ID_LENGTH);
 	}
 
 	@Override

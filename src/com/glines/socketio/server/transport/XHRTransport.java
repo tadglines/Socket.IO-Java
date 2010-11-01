@@ -121,7 +121,11 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		@Override
 		public void sendMessage(int messageType, String message)
 				throws SocketIOException {
-			sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
+			if (is_open && session.getConnectionState() == ConnectionState.CONNECTED) {
+				sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
+			} else {
+				throw new SocketIOClosedException();
+			}
 		}
 
 		@Override
@@ -224,7 +228,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 					} else {
 						String data = decodePostData(request.getContentType(), IO.toString(reader));
 						if (data != null && data.length() > 0) {
-							List<SocketIOFrame> list = SocketIOFrame.parse(URIUtil.decodePath(data.substring(5)));
+							List<SocketIOFrame> list = SocketIOFrame.parse(data);
 							for (SocketIOFrame msg: list) {
 								session.onMessage(msg);
 							}

@@ -13,19 +13,27 @@ import com.glines.socketio.server.SocketIOSession;
 
 public class XHRMultipartTransport extends XHRTransport {
 	public static final String TRANSPORT_NAME = "xhr-multipart";
+	private static final int MULTIPART_BOUNDARY_LENGTH = 20;
 
 	private class XHRMultipartSessionHelper extends XHRSessionHelper {
+		private final String contentType;
+		private final String boundary;
+		private final String boundarySeperator;
+		
 		XHRMultipartSessionHelper(SocketIOSession session) {
 			super(session, true);
+			boundary = session.generateRandomString(MULTIPART_BOUNDARY_LENGTH);
+			boundarySeperator = "--" + boundary;
+			contentType = "multipart/x-mixed-replace;boundary=\""+boundary+"\"";
 		}
 
 		protected void startSend(HttpServletResponse response) throws IOException {
-			response.setContentType("multipart/x-mixed-replace;boundary=\"socketio\"");
+			response.setContentType(contentType);
 			response.setHeader("Connection", "keep-alive");
 			char[] spaces = new char[244];
 			Arrays.fill(spaces, ' ');
 			ServletOutputStream os = response.getOutputStream();
-			os.print("--socketio");
+			os.print(boundarySeperator);
 			response.flushBuffer();
 		}
 
@@ -35,7 +43,7 @@ public class XHRMultipartTransport extends XHRTransport {
 			os.println("Content-Type: text/plain");
 			os.println();
 			os.println(data);
-			os.println("--socketio");
+			os.println(boundarySeperator);
 			response.flushBuffer();
 			System.out.println("Session["+session.getSessionId()+"]: writeData(END): " + data);
 		}
