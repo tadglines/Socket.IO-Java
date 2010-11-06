@@ -106,30 +106,18 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 
 	@SuppressWarnings("unused")
 	private void onConnect() {
-		try {
-			listener.onConnect();
-		} catch (Exception e) {
-			// Ignore
-		}
+		listener.onConnect();
 	}
 
 	@SuppressWarnings("unused")
 	private void onDisconnect(int dr, String errorMessage) {
 		DisconnectReason reason = DisconnectReason.fromInt(dr);
-		try {
-			listener.onDisconnect(reason, errorMessage);
-		} catch (Exception e) {
-			// Ignore
-		}
+		listener.onDisconnect(reason, errorMessage);
 	}
 
 	@SuppressWarnings("unused")
 	private void onMessage(int messageType, String message) {
-		try {
-			listener.onMessage(messageType, message);
-		} catch (Exception e) {
-			// Ignore
-		}
+		listener.onMessage(messageType, message);
 	}
 	
 }
