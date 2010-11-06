@@ -25,7 +25,7 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 		protected SocketIOImpl() {
 	    }
 
-	    public native int getSocketState() /*-{this.socketState;}-*/;
+	    public native int getSocketState() /*-{return this.socketState;}-*/;
 
 	    public native void connect() /*-{this.connect();}-*/;
 

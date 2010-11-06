@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=UTF-8">
+
+		<!--                                           -->
+		<!-- Any title is fine                         -->
+		<!--                                           -->
+		<title>GWT Chat</title>
+
+		<style>
+          .chat { height: 300px; overflow: auto; width: 800px; border: 1px solid #eee; font: 13px Helvetica, Arial; }
+          .chat p { padding: 8px; margin: 0; }
+          .chat p:nth-child(odd) { background: #F6F6F6; }
+          .submitPanel { width: 782px; background: #333; padding: 5px 10px; }
+          .submitPanel input[type=text] { width: 700px; padding: 5px; background: #fff; border: 1px solid #fff; }
+          .submitPanel button { cursor: pointer; background: #999; border: none; padding: 6px 8px; -moz-border-radius: 8px; -webkit-border-radius: 8px; margin-left: 5px; text-shadow: 0 1px 0 #fff; }
+          .submitPanel button:hover { background: #A2A2A2; }
+          .submitPanel button:active { position: relative; top: 2px; }
+		</style>
+
+		<!--                                           -->
+		<!-- This script loads your compiled module.   -->
+		<!-- If you add any GWT meta tags, they must   -->
+		<!-- be added before this line.                -->
+		<!--                                           -->
+		<script language="javascript" src="com.glines.socketio.examples.gwtchat.GWTChat/com.glines.socketio.examples.gwtchat.GWTChat.nocache.js"></script>
+		
+	</head>
+
+	<!--                                           -->
+	<!-- The body can have arbitrary html, or      -->
+	<!-- we leave the body empty because we want   -->
+	<!-- to create a completely dynamic ui         -->
+	<!--                                           -->
+	<body>
+
+		<!-- OPTIONAL: include this if you want history support -->
+		<iframe id="__gwt_historyFrame" style="width:0;height:0;border:0"></iframe>
+
+	</body>
+</html>

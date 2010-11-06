@@ -8,6 +8,8 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.util.ajax.JSON;
+
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
 
@@ -31,7 +33,7 @@ public class HTMLFileTransport extends XHRTransport {
 		}
 		
 		protected void writeData(ServletResponse response, String data) throws IOException {
-			response.getOutputStream().print("<script>parent.s._("+ data +", document);</script>");
+			response.getOutputStream().print("<script>parent.s._("+ JSON.toString(data) +", document);</script>");
 			response.flushBuffer();
 		}
 

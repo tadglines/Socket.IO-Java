@@ -24,18 +24,38 @@
 <project name="socketio-java" default="dist">
 	<description>J2EE Servlet based Socket.IO Server Implementation</description>
 
+	<property file="build.properties"/>
 	<property file="version.properties"/>
 
+	<!-- The defailt host/port that examples will bind to. Can be overriden in build.properties -->
+	<property name="examples.host" value="127.0.0.1"/>
+	<property name="examples.port" value="8080"/>
+	
+	<property name="gwt.war.dir" location="war"/>
+	
+	<condition property="gwt.is.available">
+		<isset property="gwt.home"/>
+	</condition>
+	
 	<path id="classpath">
 		<fileset dir="WebContent/WEB-INF/lib">
 			<include name="*.jar"/>
 		</fileset>
-		<fileset dir="C:/Software/gwt-2.0.4">
+	</path>
+	
+	<path id="gwt_classpath">
+		<fileset dir="${gwt.home}">
 			<include name="gwt-dev.jar"/>
 			<include name="gwt-user.jar"/>
 		</fileset>
 	</path>
 
+	<target name="gwtwarning" unless="gwt.is.available">
+		<echo level="warning">The property gwt.home is not set in build.properties.
+The GWT module and examples will not be compiled and the resulting jars
+will not be usable in a GWT project.</echo>
+	</target>
+	
 	<target name="init">
 		<mkdir dir="dist"/>
 		<mkdir dir="build"/>
@@ -45,12 +65,15 @@
 	<target name="clean">
 		<delete dir="dist"/>
 		<delete dir="build"/>
+		<delete dir="war"/>
 	</target>
 
 	<target name="compile" depends="init">
 		<javac sourcepath="" srcdir="src" destdir="build/classes" debug="on"
 	        target="1.6">
 			<include name="**/*.java"/>
+			<exclude name="com/glines/socketio/client/gwt/**"/>
+			<exclude name="com/glines/socketio/examples/gwtchat/**"/>
 			<classpath>
 				<path refid="classpath"/>
 			</classpath>
@@ -64,7 +87,62 @@
 	    </copy>
 	</target>
 
-	<target name="dist" depends="compile">
+	<target name="compile_gwt" depends="gwtwarning, compile" if="gwt.is.available">
+		<javac sourcepath="" srcdir="src" destdir="build/classes" debug="on"
+	        target="1.6">
+			<include name="com/glines/socketio/client/gwt/**"/>
+			<include name="com/glines/socketio/examples/gwtchat/**"/>
+			<classpath>
+				<pathelement location="build/classes"/>
+				<path refid="classpath"/>
+				<path refid="gwt_classpath"/>
+			</classpath>
+		</javac>
+		<java failonerror="true" fork="true" classname="com.google.gwt.dev.Compiler">
+			<classpath>
+				<pathelement location="src"/>
+				<pathelement location="build/classes"/>
+				<path refid="classpath"/>
+				<path refid="gwt_classpath"/>
+			</classpath>
+			<!-- Small Javascript size. -->
+			<arg line="-style OBFUSCATED"/>
+			<!-- Do not include class and package names in compiled JS. -->
+			<arg line="-XdisableClassMetadata"/>
+			<arg line="-XdisableCastChecking"/>
+			<arg value="com.glines.socketio.examples.gwtchat.GWTChat"/>
+	    </java>
+	</target>
+
+	<target name="compile_gwt_dev" depends="gwtwarning, compile">
+		<javac sourcepath="" srcdir="src" destdir="build/classes" debug="on"
+	        target="1.6">
+			<include name="com/glines/socketio/client/gwt/**"/>
+			<include name="com/glines/socketio/examples/gwtchat/**"/>
+			<classpath>
+				<pathelement location="build/classes"/>
+				<path refid="classpath"/>
+				<path refid="gwt_classpath"/>
+			</classpath>
+		</javac>
+		<java failonerror="true" fork="true" classname="com.google.gwt.dev.Compiler">
+			<classpath>
+				<pathelement location="src"/>
+				<pathelement location="build/classes"/>
+				<path refid="classpath"/>
+				<path refid="gwt_classpath"/>
+			</classpath>
+			<!-- Human-readable JS. -->
+			<arg line="-style PRETTY"/>
+			<!-- Less optimal JS, but faster compile. -->
+			<arg line="-draftCompile"/>
+			<!-- Assertions on. -->
+			<arg line="-ea"/>
+			<arg value="com.glines.socketio.examples.gwtchat.GWTChat"/>
+	    </java>
+	</target>
+
+	<target name="jars">
 		<jar destfile="dist/socketio-java-${socketio-java.version}.jar">
 			<fileset dir="build/classes"/>
 			<manifest>
@@ -87,12 +165,27 @@
 			</manifest>
 	    </jar>
 	</target>
+
+	<target name="dist" depends="gwtwarning, compile, compile_gwt, jars"/>
 	
 	<target name="run-chat">
 		<java fork="true" classname="com.glines.socketio.examples.chat.ChatServer">
 			<jvmarg value="-Dorg.eclipse.jetty.util.log.DEBUG=true"/>
-			<arg value="0.0.0.0"/>
-			<arg value="8080"/>
+			<arg value="${examples.host}"/>
+			<arg value="${examples.port}"/>
+			<classpath>
+				<pathelement location="dist/socketio-java-${socketio-java.version}.jar"/>
+				<path refid="classpath"/>
+			</classpath>
+		</java>
+	</target>
+	
+	<target name="run-gwtchat">
+		<java fork="true" classname="com.glines.socketio.examples.gwtchat.GWTChatServer">
+			<jvmarg value="-Dorg.eclipse.jetty.util.log.DEBUG=true"/>
+			<arg value="${gwt.war.dir}"/>
+			<arg value="${examples.host}"/>
+			<arg value="${examples.port}"/>
 			<classpath>
 				<pathelement location="dist/socketio-java-${socketio-java.version}.jar"/>
 				<path refid="classpath"/>
@@ -103,8 +196,8 @@
 	<target name="run-echo">
 		<java fork="true" classname="com.glines.socketio.examples.echo.EchoServer">
 			<jvmarg value="-Dorg.eclipse.jetty.util.log.DEBUG=true"/>
-			<arg value="localhost"/>
-			<arg value="8080"/>
+			<arg value="${examples.host}"/>
+			<arg value="${examples.port}"/>
 			<classpath>
 				<pathelement location="dist/socketio-java-${socketio-java.version}.jar"/>
 				<path refid="classpath"/>
@@ -115,8 +208,8 @@
 	<target name="run-broadcast">
 		<java fork="true" classname="com.glines.socketio.examples.broadcast.BroadcastServer">
 			<jvmarg value="-Dorg.eclipse.jetty.util.log.DEBUG=true"/>
-			<arg value="localhost"/>
-			<arg value="8080"/>
+			<arg value="${examples.host}"/>
+			<arg value="${examples.port}"/>
 			<classpath>
 				<pathelement location="dist/socketio-java-${socketio-java.version}.jar"/>
 				<path refid="classpath"/>

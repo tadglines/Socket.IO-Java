@@ -21,7 +21,7 @@
  * THE SOFTWARE.
  */
 
-package com.glines.socketio.examples.chat;
+package com.glines.socketio.examples.gwtchat;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -39,18 +39,17 @@ import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOServlet;
 
-public class ChatSocketServlet extends SocketIOServlet {
+public class GWTChatSocketServlet extends SocketIOServlet {
 	private static final long serialVersionUID = 1L;
 	private AtomicInteger ids = new AtomicInteger(1);
-	private Set<ChatConnection> connections = new HashSet<ChatConnection>();
+	private Set<GWTChatConnection> connections = new HashSet<GWTChatConnection>();
 
-	private class ChatConnection implements SocketIOInbound {
+	private class GWTChatConnection implements SocketIOInbound {
 		private SocketIOOutbound outbound = null;
 		private Integer sessionId = ids.getAndIncrement();
 
 		@Override
 		public String getProtocol() {
-			// TODO Auto-generated method stub
 			return null;
 		}
 
@@ -62,7 +61,7 @@ public class ChatSocketServlet extends SocketIOServlet {
 			}
 			try {
 				outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
-						Collections.singletonMap("welcome", "Welcome to Socket.IO Chat!")));
+						Collections.singletonMap("welcome", "Welcome to GWT Chat!")));
 			} catch (SocketIOException e) {
 				outbound.disconnect();
 			}
@@ -116,7 +115,7 @@ public class ChatSocketServlet extends SocketIOServlet {
 		private void broadcast(int messageType, String message) {
 			System.out.println("Broadcasting: " + message);
 			synchronized (connections) {
-				for(ChatConnection c: connections) {
+				for(GWTChatConnection c: connections) {
 					if (c != this) {
 						try {
 							c.outbound.sendMessage(messageType, message);
@@ -132,7 +131,7 @@ public class ChatSocketServlet extends SocketIOServlet {
 	@Override
 	protected SocketIOInbound doSocketIOConnect(Cookie[] cookies, String host,
 			String origin, String[] protocols) {
-		return new ChatConnection();
+		return new GWTChatConnection();
 	}
 
 }

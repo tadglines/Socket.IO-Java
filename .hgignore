@@ -16,3 +16,5 @@ dist
 .settings
 .project
 .classpath
+war
+build.properties

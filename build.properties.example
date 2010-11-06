@@ -1,0 +1,8 @@
+# Uncomment this and set it to the path to an installation of GWT in order to enable building the
+# GWT examples.
+#gwt.home=
+
+# Set these to the IP and port to which the examples will bind.
+# Suggested by mohan chinnappan <mchinnappan@gmail.com>
+examples.host=127.0.0.1
+examples.port=8080

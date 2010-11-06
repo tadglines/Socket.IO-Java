@@ -16,15 +16,19 @@
           document.getElementById('chat').scrollTop = 1000000;
       }
       function message(obj){
-        if ('announcement' in obj) addLine('<em>' + esc(obj.announcement) + '</em>');
+        if ('welcome' in obj) addLine('<em>' + esc(obj.welcome) + '</em>');
+        else if ('announcement' in obj) addLine('<em>' + esc(obj.announcement) + '</em>');
         else if ('message' in obj) addLine('<b>' + esc(obj.message[0]) + ':</b> ' + esc(obj.message[1]));
       }
       
       function send(){
         var val = document.getElementById('text').value;
-        if (val == 'lclose') {
+        if (val == '/lclose') {
 	      	addLine('<em>closing...</em>');
         	socket.close();
+        } else if (val == '/ldisconnect') {
+    	      	addLine('<em>disconnecting...</em>');
+            	socket.disconnect();
         } else {
             socket.send(val);
         }
@@ -68,13 +72,12 @@
       socket.connect();
       socket.on('message', function(mtype, obj){
     	if (mtype == socket.JSON_MESSAGE) {
-            if ('buffer' in obj){
-                document.getElementById('form').style.display='block';
-                document.getElementById('chat').innerHTML = '';
-                
-                for (var i in obj.buffer) message(obj.buffer[i]);
-            } else message(obj);
+			message(obj);
     	}
+      });
+      socket.on('connect', function(reason, error){
+          document.getElementById('form').style.display='block';
+          document.getElementById('chat').innerHTML = '';
       });
       socket.on('disconnect', function(reason, error){
     	  addLine('<b>Disconnected['+drname(reason)+']: '+error+'</b>');

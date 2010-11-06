@@ -13,13 +13,13 @@ public enum ConnectionState {
 	
 	public static ConnectionState fromInt(int val) {
 		switch (val) {
-		case 1:
+		case 0:
 			return CONNECTING;
-		case 2:
+		case 1:
 			return CONNECTED;
-		case 3:
+		case 2:
 			return CLOSING;
-		case 4:
+		case 3:
 			return CLOSED;
 		default:
 			return UNKNOWN;

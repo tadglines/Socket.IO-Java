@@ -1,0 +1,8 @@
+<module>
+    <inherits name="com.google.gwt.user.User"/>
+    <inherits name="com.google.gwt.json.JSON"/>
+	<inherits name="com.google.gwt.user.theme.standard.Standard"/>
+    <inherits name="com.glines.socketio.client.Client"/>
+    <source path="client"/>
+    <entry-point class="com.glines.socketio.examples.gwtchat.client.GWTChatClient"/>
+</module>
