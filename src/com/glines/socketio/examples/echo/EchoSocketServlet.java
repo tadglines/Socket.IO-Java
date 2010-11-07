@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.server.SocketIOInbound;
@@ -75,8 +76,7 @@ public class EchoSocketServlet extends SocketIOServlet {
 	}
 
 	@Override
-	protected SocketIOInbound doSocketIOConnect(Cookie[] cookies, String host,
-			String origin, String[] protocols) {
+	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request, String[] protocols) {
 		return new EchoConnection();
 	}
 

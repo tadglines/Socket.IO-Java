@@ -236,7 +236,7 @@ public class WebSocketTransport extends AbstractTransport {
 	        	origin = host;
 	        }
 	
-	        SocketIOInbound inbound = inboundFactory.getInbound(request.getCookies(), host, origin,
+	        SocketIOInbound inbound = inboundFactory.getInbound(request,
 	        		protocol == null ? null : protocol.split(" "));
 	        if (inbound == null) {
 	        	if (hixie) {

@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServletRequest;
 
 import org.eclipse.jetty.util.ajax.JSON;
 
@@ -130,8 +131,7 @@ public class ChatSocketServlet extends SocketIOServlet {
 	}
 
 	@Override
-	protected SocketIOInbound doSocketIOConnect(Cookie[] cookies, String host,
-			String origin, String[] protocols) {
+	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request, String[] protocols) {
 		return new ChatConnection();
 	}
 

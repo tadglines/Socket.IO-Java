@@ -32,8 +32,7 @@ import javax.servlet.http.HttpServletResponse;
 
 public interface Transport {
 	interface InboundFactory {
-		SocketIOInbound getInbound(Cookie[] cookies,
-				String host, String origin, String[] protocols);
+		SocketIOInbound getInbound(HttpServletRequest request, String[] protocols);
 	}
 
 	/**

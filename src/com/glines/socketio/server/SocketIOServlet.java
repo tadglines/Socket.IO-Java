@@ -123,9 +123,8 @@ public abstract class SocketIOServlet extends GenericServlet {
   		transport.handle(request, response, new Transport.InboundFactory() {
 
 			@Override
-			public SocketIOInbound getInbound(Cookie[] cookies,
-					String host, String origin, String[] protocols) {
-				return SocketIOServlet.this.doSocketIOConnect(cookies, host, origin, protocols);
+			public SocketIOInbound getInbound(HttpServletRequest request, String[] protocols) {
+				return SocketIOServlet.this.doSocketIOConnect(request, protocols);
 			}
   			
   		}, sessionManager);
@@ -143,6 +142,6 @@ public abstract class SocketIOServlet extends GenericServlet {
      * Returns an instance of SocketIOInbound or null if the connection is to be denied.
      * The value of cookies and protocols may be null.
      */
-	protected abstract SocketIOInbound doSocketIOConnect(Cookie[] cookies,
-			String host, String origin, String[] protocols);
+	protected abstract SocketIOInbound doSocketIOConnect(
+			HttpServletRequest request, String[] protocols);
 }
