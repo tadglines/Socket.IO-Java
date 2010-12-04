@@ -367,6 +367,9 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		this.maxIdleTime = maxIdleTime;
 	}
 
+	/**
+	 * This method should only be called within the context of an active HTTP request.
+	 */
 	protected abstract XHRSessionHelper createHelper(SocketIOSession session);
 	
 	@Override

@@ -12,13 +12,17 @@ import org.eclipse.jetty.util.ajax.JSON;
 
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.transport.ConnectionTimeoutPreventor.IdleCheck;
 
 public class HTMLFileTransport extends XHRTransport {
 	public static final String TRANSPORT_NAME = "htmlfile";
 
-	private class SessionHelper extends XHRSessionHelper {
-		SessionHelper(SocketIOSession session) {
+	private class HTMLFileSessionHelper extends XHRSessionHelper {
+		private final IdleCheck idleCheck;
+
+		HTMLFileSessionHelper(SocketIOSession session, IdleCheck idleCheck) {
 			super(session, true);
+			this.idleCheck = idleCheck;
 		}
 
 		protected void startSend(HttpServletResponse response) throws IOException {
@@ -33,6 +37,7 @@ public class HTMLFileTransport extends XHRTransport {
 		}
 		
 		protected void writeData(ServletResponse response, String data) throws IOException {
+			idleCheck.activity();
 			response.getOutputStream().print("<script>parent.s._("+ JSON.toString(data) +", document);</script>");
 			response.flushBuffer();
 		}
@@ -57,6 +62,7 @@ public class HTMLFileTransport extends XHRTransport {
 	}
 
 	protected XHRSessionHelper createHelper(SocketIOSession session) {
-		return new SessionHelper(session);
+		IdleCheck idleCheck = ConnectionTimeoutPreventor.newTimeoutPreventor();
+		return new HTMLFileSessionHelper(session, idleCheck);
 	}
 }

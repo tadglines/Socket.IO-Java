@@ -10,6 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.transport.ConnectionTimeoutPreventor.IdleCheck;
 
 public class XHRMultipartTransport extends XHRTransport {
 	public static final String TRANSPORT_NAME = "xhr-multipart";
@@ -19,12 +20,14 @@ public class XHRMultipartTransport extends XHRTransport {
 		private final String contentType;
 		private final String boundary;
 		private final String boundarySeperator;
+		private final IdleCheck idleCheck;
 		
-		XHRMultipartSessionHelper(SocketIOSession session) {
+		XHRMultipartSessionHelper(SocketIOSession session, IdleCheck idleCheck) {
 			super(session, true);
 			boundary = session.generateRandomString(MULTIPART_BOUNDARY_LENGTH);
 			boundarySeperator = "--" + boundary;
 			contentType = "multipart/x-mixed-replace;boundary=\""+boundary+"\"";
+			this.idleCheck = idleCheck;
 		}
 
 		protected void startSend(HttpServletResponse response) throws IOException {
@@ -38,6 +41,7 @@ public class XHRMultipartTransport extends XHRTransport {
 		}
 
 		protected void writeData(ServletResponse response, String data) throws IOException {
+			idleCheck.activity();
 			System.out.println("Session["+session.getSessionId()+"]: writeData(START): " + data);
 			ServletOutputStream os = response.getOutputStream();
 			os.println("Content-Type: text/plain");
@@ -48,7 +52,8 @@ public class XHRMultipartTransport extends XHRTransport {
 			System.out.println("Session["+session.getSessionId()+"]: writeData(END): " + data);
 		}
 
-		protected void finishSend(ServletResponse response) throws IOException {};
+		protected void finishSend(ServletResponse response) throws IOException {
+		};
 
 		protected void customConnect(HttpServletRequest request,
 				HttpServletResponse response) throws IOException {
@@ -68,6 +73,7 @@ public class XHRMultipartTransport extends XHRTransport {
 	}
 
 	protected XHRSessionHelper createHelper(SocketIOSession session) {
-		return new XHRMultipartSessionHelper(session);
+		IdleCheck idleCheck = ConnectionTimeoutPreventor.newTimeoutPreventor();
+		return new XHRMultipartSessionHelper(session, idleCheck);
 	}
 }
