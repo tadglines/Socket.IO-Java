@@ -26,6 +26,7 @@ package com.glines.socketio.server.transport;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
@@ -36,6 +37,7 @@ import org.eclipse.jetty.continuation.ContinuationListener;
 import org.eclipse.jetty.continuation.ContinuationSupport;
 import org.eclipse.jetty.util.IO;
 import org.eclipse.jetty.util.URIUtil;
+import org.eclipse.jetty.util.log.Log;
 
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
@@ -57,8 +59,8 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 			implements SessionTransportHandler, ContinuationListener {
 		protected final SocketIOSession session;
 		private final TransportBuffer buffer = new TransportBuffer(bufferSize);
-		private boolean is_open = false;
-		private Continuation continuation = null;
+		private volatile boolean is_open = false;
+		private volatile Continuation continuation = null;
 		private final boolean isConnectionPersistant;
 		private boolean disconnectWhenEmpty = false;
 
@@ -81,13 +83,17 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		
 		@Override
 		public void disconnect() {
-			session.onDisconnect(DisconnectReason.DISCONNECT);
-			abort();
+			synchronized (this) {
+				session.onDisconnect(DisconnectReason.DISCONNECT);
+				abort();
+			}
 		}
 
 		@Override
 		public void close() {
-			session.startClose();
+			synchronized (this) {
+				session.startClose();
+			}
 		}
 
 		@Override
@@ -98,56 +104,61 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		@Override
 		public void sendMessage(SocketIOFrame frame)
 				throws SocketIOException {
-			if (is_open) {
-				System.out.println("Session["+session.getSessionId()+"]: " +
-						"sendMessage: [" + frame.getFrameType() + "]: " + frame.getData());
-				if (continuation != null && continuation.isInitial()) {
-					List<String> messages = buffer.drainMessages();
-					messages.add(frame.encode());
-					if (messages.size() > 0) {
+			synchronized (this) {
+				Log.debug("Session["+session.getSessionId()+"]: " +
+						"sendMessage(frame): [" + frame.getFrameType() + "]: " + frame.getData());
+				if (is_open) {
+					if (continuation != null) {
+						List<String> messages = buffer.drainMessages();
+						messages.add(frame.encode());
 						StringBuilder data = new StringBuilder();
 						for (String msg: messages) {
 							data.append(msg);
 						}
 						try {
 							writeData(continuation.getServletResponse(), data.toString());
-							session.startHeartbeatTimer();
 						} catch (IOException e) {
 							throw new SocketIOException(e);
 						}
+						if (!isConnectionPersistant) {
+							Continuation cont = continuation;
+							continuation = null;
+							cont.complete();
+						} else {
+							session.startHeartbeatTimer();
+						}
+					} else {
+						String data = frame.encode();
+						if (buffer.putMessage(data, maxIdleTime) == false) {
+							session.onDisconnect(DisconnectReason.TIMEOUT);
+							abort();
+							throw new SocketIOException();
+						}
 					}
 				} else {
-					String data = frame.encode();
-					if (continuation != null && continuation.isSuspended() &&
-							buffer.getAvailableBytes() < data.length()) {
-						continuation.resume();
-					}
-					if (buffer.putMessage(data, maxIdleTime) == false) {
-						session.onDisconnect(DisconnectReason.TIMEOUT);
-						abort();
-						throw new SocketIOException();
-					}
-					if (continuation != null && continuation.isSuspended()) {
-						continuation.resume();
-					}
+					throw new SocketIOClosedException();
 				}
-			} else {
-				throw new SocketIOClosedException();
 			}
 		}
 
 		@Override
 		public void sendMessage(String message) throws SocketIOException {
+			Log.debug("Session["+session.getSessionId()+"]: " +
+					"sendMessage(String): " + message);
 			sendMessage(SocketIOFrame.TEXT_MESSAGE_TYPE, message);
 		}
 
 		@Override
 		public void sendMessage(int messageType, String message)
 				throws SocketIOException {
-			if (is_open && session.getConnectionState() == ConnectionState.CONNECTED) {
-				sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
-			} else {
-				throw new SocketIOClosedException();
+			synchronized (this) {
+				Log.debug("Session["+session.getSessionId()+"]: " +
+						"sendMessage(int, String): [" + messageType + "]: " + message);
+				if (is_open && session.getConnectionState() == ConnectionState.CONNECTED) {
+					sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
+				} else {
+					throw new SocketIOClosedException();
+				}
 			}
 		}
 
@@ -156,90 +167,54 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 				HttpServletResponse response, SocketIOSession session)
 				throws IOException {
 			if ("GET".equals(request.getMethod())) {
-				if (!is_open && buffer.isEmpty()) {
-					response.sendError(HttpServletResponse.SC_NOT_FOUND);
-				} else {
-					Continuation cont = (Continuation)request.getAttribute(CONTINUATION_KEY);
-					if (continuation != null) {
-						if (cont != continuation) {
-							if (cont != null) {
-								/*
-								 * If the request continuation is non-null and doesn't match the
-								 * active continuation then it's likely this is a result of an old
-								 * continuation being resumes one last time.
-								 * Just return and the continuation will be no more.
-								 */
-								return;
-							} else {
-								/*
-								 * If the request has no continuation but there is an active
-								 * continuation for the session then this request is probably due
-								 * to the client making spurious requests.
-								 * Return with no results.
-								 */
-								return;
-							}
-						}
-						List<String> messages = buffer.drainMessages();
-						if (messages.size() > 0) {
-							StringBuilder data = new StringBuilder();
-							for (String msg: messages) {
-								data.append(msg);
-							}
-							writeData(continuation.getServletResponse(), data.toString());
-							if (isConnectionPersistant) {
-								if (!disconnectWhenEmpty) {
-									continuation.suspend(response);
-								}
-							} else {
+				synchronized (this) {
+					if (!is_open && buffer.isEmpty()) {
+						response.sendError(HttpServletResponse.SC_NOT_FOUND);
+					} else {
+						/*
+						 */
+						Continuation cont = (Continuation)request.getAttribute(CONTINUATION_KEY);
+						if (continuation != null || cont != null) {
+							if (continuation == cont) {
+								continuation = null;
 								finishSend(response);
+							}
+							if (cont != null) {
 								request.removeAttribute(CONTINUATION_KEY);
 							}
-							session.startHeartbeatTimer();
-						} else {
-							if (!disconnectWhenEmpty) {
-								continuation.suspend(response);
-							}
-						}
-					} else if (!isConnectionPersistant) {
-						if (cont != null) {
-							/*
-							 * If the request continuation is not-null and and there is no
-							 * active continuation then it's likely this is a result of an old
-							 * continuation being resumes one last time.
-							 * Just return and the continuation will be no more.
-							 */
 							return;
 						}
-						if (!buffer.isEmpty()) {
-							List<String> messages = buffer.drainMessages();
-							if (messages.size() > 0) {
-								StringBuilder data = new StringBuilder();
-								for (String msg: messages) {
-									data.append(msg);
+						if (!isConnectionPersistant) {
+							if (!buffer.isEmpty()) {
+								List<String> messages = buffer.drainMessages();
+								if (messages.size() > 0) {
+									StringBuilder data = new StringBuilder();
+									for (String msg: messages) {
+										data.append(msg);
+									}
+									startSend(response);
+									writeData(response, data.toString());
+									finishSend(response);
+									if (!disconnectWhenEmpty) {
+										session.startTimeoutTimer();
+									} else {
+										abort();
+									}
 								}
+							} else {
+								session.clearTimeoutTimer();
+								request.setAttribute(SESSION_KEY, session);
+								response.setBufferSize(bufferSize);
+								continuation = ContinuationSupport.getContinuation(request);
+								continuation.addContinuationListener(this);
+								continuation.setTimeout(REQUEST_TIMEOUT);
+								continuation.suspend(response);
+								request.setAttribute(CONTINUATION_KEY, continuation);
 								startSend(response);
-								writeData(response, data.toString());
-								finishSend(response);
-								if (!disconnectWhenEmpty) {
-									session.startTimeoutTimer();
-								} else {
-									abort();
-								}
 							}
 						} else {
-							session.clearTimeoutTimer();
-							request.setAttribute(SESSION_KEY, session);
-							response.setBufferSize(bufferSize);
-							continuation = ContinuationSupport.getContinuation(request);
-							continuation.addContinuationListener(this);
-							continuation.setTimeout(REQUEST_TIMEOUT);
-							continuation.suspend(response);
-							request.setAttribute(CONTINUATION_KEY, continuation);
-							startSend(response);
+							response.sendError(HttpServletResponse.SC_NOT_FOUND);
 						}
-					} else {
-						response.sendError(HttpServletResponse.SC_NOT_FOUND);
 					}
 				}
 			} else if ("POST".equals(request.getMethod())) {
@@ -252,8 +227,10 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 						String data = decodePostData(request.getContentType(), IO.toString(reader));
 						if (data != null && data.length() > 0) {
 							List<SocketIOFrame> list = SocketIOFrame.parse(data);
-							for (SocketIOFrame msg: list) {
-								session.onMessage(msg);
+							synchronized (session) {
+								for (SocketIOFrame msg: list) {
+									session.onMessage(msg);
+								}
 							}
 						}
 					}
@@ -282,23 +259,23 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		@Override
 		public void onComplete(Continuation cont) {
 			if (continuation != null && cont == continuation) {
+				continuation = null;
 				if (isConnectionPersistant) {
 					is_open = false;
 					if (!disconnectWhenEmpty) {
 						session.onDisconnect(DisconnectReason.DISCONNECT);
 					}
-					continuation = null;
 					abort();
 				} else {
-					continuation = null;
 					if (!is_open && buffer.isEmpty() && !disconnectWhenEmpty) {
 						session.onDisconnect(DisconnectReason.DISCONNECT);
 						abort();
-					}
-					if (disconnectWhenEmpty) {
-						abort();
 					} else {
-						session.startTimeoutTimer();
+						if (disconnectWhenEmpty) {
+							abort();
+						} else {
+							session.startTimeoutTimer();
+						}
 					}
 				}
 			}
@@ -307,13 +284,12 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		@Override
 		public void onTimeout(Continuation cont) {
 			if (continuation != null && cont == continuation) {
+				continuation = null;
 				if (isConnectionPersistant) {
 					is_open = false;
 					session.onDisconnect(DisconnectReason.TIMEOUT);
-					continuation = null;
 					abort();
 				} else {
-					continuation = null;
 					if (!is_open && buffer.isEmpty()) {
 						session.onDisconnect(DisconnectReason.DISCONNECT);
 						abort();
@@ -321,7 +297,6 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 						try {
 							finishSend(cont.getServletResponse());
 						} catch (IOException e) {
-							continuation = null;
 							session.onDisconnect(DisconnectReason.DISCONNECT);
 							abort();
 						}
@@ -341,7 +316,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 			continuation = ContinuationSupport.getContinuation(request);
 			continuation.addContinuationListener(this);
 			if (isConnectionPersistant) {
-				continuation.setTimeout(HTTP_REQUEST_TIMEOUT*2);
+				continuation.setTimeout(0);
 			}
 			customConnect(request, response);
 			is_open = true;
@@ -364,10 +339,11 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 			session.clearTimeoutTimer();
 			is_open = false;
 			if (continuation != null) {
-				if (continuation.isSuspended()) {
-					continuation.complete();
-				}
+				Continuation cont = continuation;
 				continuation = null;
+				if (cont.isSuspended()) {
+					cont.complete();
+				}
 			}
 			buffer.setListener(new TransportBuffer.BufferListener() {
 				@Override

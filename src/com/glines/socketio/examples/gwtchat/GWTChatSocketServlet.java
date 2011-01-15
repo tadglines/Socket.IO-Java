@@ -33,6 +33,7 @@ import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
 import org.eclipse.jetty.util.ajax.JSON;
+import org.eclipse.jetty.util.log.Log;
 
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
@@ -84,7 +85,7 @@ public class GWTChatSocketServlet extends SocketIOServlet {
 
 		@Override
 		public void onMessage(int messageType, String message) {
-			System.out.println("Recieved: " + message);
+			Log.debug("Recieved: " + message);
 			if (message.equals("/rclose")) {
 				outbound.close();
 			} else if (message.equals("/rdisconnect")) {
@@ -114,7 +115,7 @@ public class GWTChatSocketServlet extends SocketIOServlet {
 		}
 
 		private void broadcast(int messageType, String message) {
-			System.out.println("Broadcasting: " + message);
+			Log.debug("Broadcasting: " + message);
 			synchronized (connections) {
 				for(GWTChatConnection c: connections) {
 					if (c != this) {

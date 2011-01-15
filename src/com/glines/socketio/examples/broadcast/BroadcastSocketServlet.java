@@ -30,6 +30,8 @@ import java.util.Set;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
+import org.eclipse.jetty.util.log.Log;
+
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOServlet;
@@ -71,7 +73,7 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 		}
 
 		private void broadcast(int messageType, String message) {
-			System.out.println("Broadcasting: " + message);
+			Log.debug("Broadcasting: " + message);
 			synchronized (connections) {
 				for(BroadcastConnection c: connections) {
 					if (c != this) {

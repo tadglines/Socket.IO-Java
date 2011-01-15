@@ -31,6 +31,8 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.util.log.Log;
+
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
 import com.glines.socketio.server.transport.ConnectionTimeoutPreventor.IdleCheck;
@@ -65,14 +67,14 @@ public class XHRMultipartTransport extends XHRTransport {
 
 		protected void writeData(ServletResponse response, String data) throws IOException {
 			idleCheck.activity();
-			System.out.println("Session["+session.getSessionId()+"]: writeData(START): " + data);
+			Log.debug("Session["+session.getSessionId()+"]: writeData(START): " + data);
 			ServletOutputStream os = response.getOutputStream();
 			os.println("Content-Type: text/plain");
 			os.println();
 			os.println(data);
 			os.println(boundarySeperator);
 			response.flushBuffer();
-			System.out.println("Session["+session.getSessionId()+"]: writeData(END): " + data);
+			Log.debug("Session["+session.getSessionId()+"]: writeData(END): " + data);
 		}
 
 		protected void finishSend(ServletResponse response) throws IOException {

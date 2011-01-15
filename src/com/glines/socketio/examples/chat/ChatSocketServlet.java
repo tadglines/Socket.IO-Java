@@ -29,10 +29,10 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
 import org.eclipse.jetty.util.ajax.JSON;
+import org.eclipse.jetty.util.log.Log;
 
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
@@ -85,7 +85,7 @@ public class ChatSocketServlet extends SocketIOServlet {
 
 		@Override
 		public void onMessage(int messageType, String message) {
-			System.out.println("Recieved: " + message);
+			Log.debug("Recieved: " + message);
 			if (message.equals("/rclose")) {
 				outbound.close();
 			} else if (message.equals("/rdisconnect")) {
@@ -107,6 +107,40 @@ public class ChatSocketServlet extends SocketIOServlet {
 				} catch (SocketIOException e) {
 					outbound.disconnect();
 				}
+			} else if (message.startsWith("/burst")) {
+				int burstNum = 10;
+				String parts[] = message.split("\\s+");
+				if (parts.length == 2) {
+					burstNum = Integer.parseInt(parts[1]);
+				}
+				try {
+					for (int i = 0; i < burstNum; i++) {
+						Log.debug("**************************************** Sending burst message: " + i);
+						outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+								Collections.singletonMap("message",new String[]{"Server", "Hi " + i +
+										"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" +
+										"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" +
+										"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" +
+										"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" +
+										"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" +
+										"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" +
+										"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" +
+										"0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF"
+										})));
+//						outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+//								Collections.singletonMap("say","Hi " + i)));
+						try {
+							Thread.sleep(250);
+						} catch (InterruptedException e) {
+							// Do nothing
+						}
+					}
+				} catch (Exception e) {
+					Log.debug(e);
+//				} catch (SocketIOException e) {
+//					Log.debug(e);
+//					outbound.disconnect();
+				}
 			} else {
 				broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
 						Collections.singletonMap("message",
@@ -115,7 +149,7 @@ public class ChatSocketServlet extends SocketIOServlet {
 		}
 
 		private void broadcast(int messageType, String message) {
-			System.out.println("Broadcasting: " + message);
+			Log.debug("Broadcasting: " + message);
 			synchronized (connections) {
 				for(ChatConnection c: connections) {
 					if (c != this) {

@@ -30,6 +30,7 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.eclipse.jetty.util.log.Log;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocketFactory;
 
@@ -147,7 +148,7 @@ public class WebSocketTransport extends AbstractTransport {
 		@Override
 		public void sendMessage(SocketIOFrame frame) throws SocketIOException {
 			if (outbound.isOpen()) {
-				System.out.println("Session["+session.getSessionId()+"]: sendMessage: [" + frame.getFrameType() + "]: " + frame.getData());
+				Log.debug("Session["+session.getSessionId()+"]: sendMessage: [" + frame.getFrameType() + "]: " + frame.getData());
 				try {
 					outbound.sendMessage(frame.encode());
 				} catch (IOException e) {
