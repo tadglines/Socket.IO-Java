@@ -50,6 +50,16 @@
 		</fileset>
 	</path>
 
+	<target name="fixeol">
+		<fixcrlf eol="lf" srcdir=".">
+				<include name="src/**/*.java"/>
+				<include name="src/**/*.xml"/>
+				<include name="build.xml"/>
+				<include name="build.properties.example"/>
+				<include name="version.properties"/>
+		</fixcrlf>
+	</target>
+
 	<target name="gwtwarning" unless="gwt.is.available">
 		<echo level="warning">The property gwt.home is not set in build.properties.
 The GWT module and examples will not be compiled and the resulting jars
