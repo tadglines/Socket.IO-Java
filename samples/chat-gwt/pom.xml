@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.glines.socketio.sample</groupId>
+        <artifactId>socketio-sample</artifactId>
+        <version>0.1-SNAPSHOT</version>
+        <relativePath>..</relativePath>
+    </parent>
+
+    <artifactId>socketio-sample-chat-gwt</artifactId>
+    <packaging>war</packaging>
+
+    <name>Socket.IO Sample Chat GWT</name>
+    <description>${project.name}</description>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>gwt-maven-plugin</artifactId>
+                <configuration>
+                    <logLevel>INFO</logLevel>
+                    <style>PRETTY</style>
+                    <enableAssertions>true</enableAssertions>
+                    <disableClassMetadata>false</disableClassMetadata>
+                    <disableCastChecking>false</disableCastChecking>
+                    <draftCompile>true</draftCompile>
+                    <compileSourcesArtifacts>
+                        <compileSourcesArtifact>com.glines.socketio:socketio-core</compileSourcesArtifact>
+                        <compileSourcesArtifact>com.glines.socketio.extension:socketio-gwt</compileSourcesArtifact>
+                    </compileSourcesArtifacts>
+                    <module>com.glines.socketio.sample.gwtchat.GWTChat</module>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.glines.socketio</groupId>
+            <artifactId>socketio-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.glines.socketio.extension</groupId>
+            <artifactId>socketio-gwt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testatoo.container</groupId>
+            <artifactId>testatoo-container-jetty</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.gwt</groupId>
+            <artifactId>gwt-user</artifactId>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
+</project>

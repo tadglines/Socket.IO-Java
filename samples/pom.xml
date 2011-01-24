@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.glines.socketio</groupId>
+        <artifactId>socketio</artifactId>
+        <version>0.1-SNAPSHOT</version>
+        <relativePath>..</relativePath>
+    </parent>
+
+    <groupId>com.glines.socketio.sample</groupId>
+    <artifactId>socketio-sample</artifactId>
+    <packaging>pom</packaging>
+
+    <name>Socket.IO Samples</name>
+    <description>Socket.IO Java Samples</description>
+
+    <modules>
+        <module>text</module>
+        <module>echo</module>
+        <module>broadcast</module>
+        <module>chat</module>
+        <module>chat-gwt</module>
+    </modules>
+
+</project>
