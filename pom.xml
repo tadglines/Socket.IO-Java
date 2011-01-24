@@ -31,7 +31,6 @@
             <organizationUrl>http://www.ovea.com/</organizationUrl>
             <timezone>-5</timezone>
             <roles>
-                <role>project administrator</role>
                 <role>developer</role>
             </roles>
         </developer>
@@ -182,11 +181,6 @@
                     <configuration>
                         <header>https://github.com/mathieucarbou/licenses/raw/master/MIT</header>
                         <strictCheck>true</strictCheck>
-                        <properties>
-                            <owner>Tad Glines, Mathieu Carbou, Ovea</owner>
-                            <year>${project.inceptionYear}</year>
-                            <email>mathieu.carbou@gmail.com</email>
-                        </properties>
                         <excludes>
                             <exclude>README</exclude>
                             <exclude>src/test/resources/**</exclude>
@@ -251,9 +245,36 @@
                 <artifactId>maven-license-plugin</artifactId>
                 <executions>
                     <execution>
+                        <id>licensing-1</id>
                         <goals>
                             <goal>check</goal>
                         </goals>
+                        <configuration>
+                            <properties>
+                                <owner>Tad Glines</owner>
+                                <year>${project.inceptionYear}</year>
+                            </properties>
+                            <includes>
+                                <include>**/*.java</include>
+                                <include>**/*.xml</include>
+                                <include>**/*.html</include>
+                            </includes>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>licensing-2</id>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <properties>
+                                <owner>Ovea</owner>
+                                <year>2011</year>
+                            </properties>
+                            <includes>
+                                <include>PLACEHOLDER</include>
+                            </includes>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
