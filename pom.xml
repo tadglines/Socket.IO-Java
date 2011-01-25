@@ -15,6 +15,7 @@
 
     <properties>
         <jdk.version>1.6</jdk.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <organization>
@@ -64,17 +65,25 @@
     </licenses>
 
     <distributionManagement>
+        <!-- TODO: switch repositories when deploying on OSS Sonatype repos -->
         <repository>
             <id>mc-release</id>
-            <name>Alternate Maven repository of releases</name>
             <url>dav:https://mc-repo.googlecode.com/svn/maven2/releases</url>
         </repository>
+        <!--<repository>
+            <id>socketio-staging</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>-->
         <snapshotRepository>
             <id>mc-snapshot</id>
-            <name>Alternate Maven repository of snapshots</name>
             <url>dav:https://mc-repo.googlecode.com/svn/maven2/snapshots</url>
             <uniqueVersion>false</uniqueVersion>
         </snapshotRepository>
+        <!--<snapshotRepository>
+            <id>socketio-snapshots</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+            <uniqueVersion>false</uniqueVersion>
+        </snapshotRepository>-->
         <site>
             <id>website</id>
             <name>website</name>
@@ -84,8 +93,13 @@
 
     <issueManagement>
         <system>github</system>
-        <url>https://github.com/mathieucarbou/Socket.IO-Java/issues</url>
+        <url>https://github.com/Ovea/Socket.IO-Java/issues</url>
     </issueManagement>
+
+    <ciManagement>
+        <system>hudson</system>
+        <url>http://build.intradev.ovea.com/hudson/</url>
+    </ciManagement>
 
     <scm>
         <connection>scm:git:git@github.com:mathieucarbou/Socket.IO-Java.git</connection>
@@ -115,6 +129,20 @@
         <pluginManagement>
             <plugins>
                 <plugin>
+                    <artifactId>maven-enforcer-plugin</artifactId>
+                    <version>1.0-beta-1</version>
+                    <configuration>
+                        <rules>
+                            <requireMavenVersion>
+                                <version>(,2.1.0),(2.1.0,2.2.0),(2.2.0,)</version>
+                                <message>
+                                    Maven 2.1.0 and 2.2.0 produce incorrect GPG signatures and checksums respectively.
+                                </message>
+                            </requireMavenVersion>
+                        </rules>
+                    </configuration>
+                </plugin>
+                <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
                     <version>2.3.2</version>
                     <configuration>
@@ -125,6 +153,11 @@
                 <plugin>
                     <artifactId>maven-gpg-plugin</artifactId>
                     <version>1.1</version>
+                    <configuration>
+                        <useAgent>false</useAgent>
+                        <!-- Ovea GPG key ID -->
+                        <keyname>F82FA7FE</keyname>
+                    </configuration>
                 </plugin>
                 <plugin>
                     <artifactId>maven-release-plugin</artifactId>
@@ -144,6 +177,10 @@
                 <plugin>
                     <artifactId>maven-jar-plugin</artifactId>
                     <version>2.3.1</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-jarsigner-plugin</artifactId>
+                    <version>1.2</version>
                 </plugin>
                 <plugin>
                     <artifactId>maven-javadoc-plugin</artifactId>
@@ -219,6 +256,18 @@
         </pluginManagement>
         <plugins>
             <plugin>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>enforce-maven</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <artifactId>maven-jar-plugin</artifactId>
                 <executions>
                     <execution>
@@ -278,6 +327,29 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- TODO: activate if deploying in OSS Sonatype repos or maven central repo togpg sign jars -->
+            <!--<plugin>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>-->
         </plugins>
     </build>
 
@@ -307,32 +379,6 @@
             </plugin>
         </plugins>
     </reporting>
-
-    <profiles>
-        <profile>
-            <id>release</id>
-            <activation>
-                <property>
-                    <name>performRelease</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <build>
-                <plugins>
-                    <plugin>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                        <executions>
-                            <execution>
-                                <goals>
-                                    <goal>jar</goal>
-                                </goals>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
-        </profile>
-    </profiles>
 
     <dependencyManagement>
         <dependencies>
