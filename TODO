@@ -1,0 +1,7 @@
+1. Maven pom.xml
+
+2. Add unit tests
+
+3. Add embedded containers to run sample webapps
+
+4. Split project in modules (core, samples, gwt, ...)
