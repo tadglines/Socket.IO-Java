@@ -24,8 +24,14 @@
 package com.glines.socketio.sample.broadcast;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -38,34 +44,27 @@ import com.glines.socketio.server.SocketIOServlet;
 
 public class BroadcastSocketServlet extends SocketIOServlet {
 	private static final long serialVersionUID = 1L;
-	private Set<BroadcastConnection> connections = new HashSet<BroadcastConnection>();
+	private Queue<BroadcastConnection> connections = new ConcurrentLinkedQueue<BroadcastConnection>();
 
 	private class BroadcastConnection implements SocketIOInbound {
-		private SocketIOOutbound outbound = null;
+		private volatile SocketIOOutbound outbound = null;
 
 		@Override
 		public String getProtocol() {
-			// TODO Auto-generated method stub
 			return null;
 		}
 
 		@Override
 		public void onConnect(SocketIOOutbound outbound) {
 			this.outbound = outbound;
-			synchronized (connections) {
-				connections.add(this);
-			}
+            connections.offer(this);
 		}
 
 		@Override
 		public void onDisconnect(DisconnectReason reason, String errorMessage) {
-			synchronized(this) {
 				this.outbound = null;
-			}
-			synchronized (connections) {
 				connections.remove(this);
 			}
-		}
 
 		@Override
 		public void onMessage(int messageType, String message) {
@@ -74,7 +73,6 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 
 		private void broadcast(int messageType, String message) {
 			Log.debug("Broadcasting: " + message);
-			synchronized (connections) {
 				for(BroadcastConnection c: connections) {
 					if (c != this) {
 						try {
@@ -86,7 +84,6 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 				}
 			}
 		}
-	}
 
 	@Override
 	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request, String[] protocols) {

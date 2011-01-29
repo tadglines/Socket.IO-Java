@@ -24,9 +24,15 @@
 package com.glines.socketio.sample.chat;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.servlet.http.HttpServletRequest;
@@ -43,10 +49,10 @@ import com.glines.socketio.server.SocketIOServlet;
 public class ChatSocketServlet extends SocketIOServlet {
 	private static final long serialVersionUID = 1L;
 	private AtomicInteger ids = new AtomicInteger(1);
-	private Set<ChatConnection> connections = new HashSet<ChatConnection>();
+	private Queue<ChatConnection> connections = new ConcurrentLinkedQueue<ChatConnection>();
 
 	private class ChatConnection implements SocketIOInbound {
-		private SocketIOOutbound outbound = null;
+		private volatile SocketIOOutbound outbound = null;
 		private Integer sessionId = ids.getAndIncrement();
 
 		@Override
@@ -58,9 +64,7 @@ public class ChatSocketServlet extends SocketIOServlet {
 		@Override
 		public void onConnect(SocketIOOutbound outbound) {
 			this.outbound = outbound;
-			synchronized (connections) {
-				connections.add(this);
-			}
+            connections.offer(this);
 			try {
 				outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
 						Collections.singletonMap("welcome", "Welcome to Socket.IO Chat!")));
@@ -73,12 +77,8 @@ public class ChatSocketServlet extends SocketIOServlet {
 
 		@Override
 		public void onDisconnect(DisconnectReason reason, String errorMessage) {
-			synchronized(this) {
 				this.outbound = null;
-			}
-			synchronized (connections) {
 				connections.remove(this);
-			}
 			broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
 					Collections.singletonMap("announcement", sessionId + " disconnected")));
 		}
@@ -150,7 +150,6 @@ public class ChatSocketServlet extends SocketIOServlet {
 
 		private void broadcast(int messageType, String message) {
 			Log.debug("Broadcasting: " + message);
-			synchronized (connections) {
 				for(ChatConnection c: connections) {
 					if (c != this) {
 						try {
@@ -162,7 +161,6 @@ public class ChatSocketServlet extends SocketIOServlet {
 				}
 			}
 		}
-	}
 
 	@Override
 	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request, String[] protocols) {

@@ -29,11 +29,8 @@ import java.io.OutputStream;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.servlet.GenericServlet;
 import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.Cookie;
+import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -48,7 +45,7 @@ import com.glines.socketio.server.transport.XHRPollingTransport;
 
 /**
  */
-public abstract class SocketIOServlet extends GenericServlet {
+public abstract class SocketIOServlet extends HttpServlet {
 	public static final String BUFFER_SIZE_INIT_PARAM = "bufferSize";
 	public static final String MAX_IDLE_TIME_INIT_PARAM = "maxIdleTime";
 	public static final int BUFFER_SIZE_DEFAULT = 8192;
@@ -84,19 +81,17 @@ public abstract class SocketIOServlet extends GenericServlet {
 		}
 	}
 
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        serve(req, resp);
+    }
 
 	@Override
-	public void service(ServletRequest request, ServletResponse response)
-			throws ServletException, IOException {
-		service((HttpServletRequest)request, (HttpServletResponse)response);
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        serve(req, resp);
 	}
 
-    protected void service(HttpServletRequest request, HttpServletResponse response)
-    		throws ServletException, IOException {
-    	if ("OPTIONS".equals(request.getMethod())) {
-    		// TODO: process and reply to CORS preflight request.
-    		return;
-    	}
+    private void serve(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
     	String path = request.getPathInfo();
     	if (path == null || path.length() == 0 || "/".equals(path)) {
@@ -142,6 +137,5 @@ public abstract class SocketIOServlet extends GenericServlet {
      * Returns an instance of SocketIOInbound or null if the connection is to be denied.
      * The value of cookies and protocols may be null.
      */
-	protected abstract SocketIOInbound doSocketIOConnect(
-			HttpServletRequest request, String[] protocols);
+	protected abstract SocketIOInbound doSocketIOConnect(HttpServletRequest request, String[] protocols);
 }

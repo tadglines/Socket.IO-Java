@@ -24,9 +24,12 @@
 package com.glines.socketio.client.jre;
 
 import java.io.IOException;
+import java.util.Collection;
 import java.util.LinkedList;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -60,7 +63,7 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 	protected HttpExchange currentGet;
 	protected HttpExchange currentPost;
 	protected final boolean isConnectionPersistent;
-	protected LinkedList<SocketIOFrame> queue = new LinkedList<SocketIOFrame>();
+	protected BlockingQueue<SocketIOFrame> queue = new LinkedBlockingQueue<SocketIOFrame>();
 	protected AtomicBoolean doingSend = new AtomicBoolean(false);
 	protected AtomicLong messageId = new AtomicLong(0);
 	protected String closeId = null;
@@ -180,21 +183,18 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 
 	protected void sendFrame(SocketIOFrame frame) {
 		messageId.incrementAndGet();
-		synchronized (queue) {
-			queue.add(frame);
-		}
+        queue.offer(frame);
 		checkSend();
 	}
 	
 	protected void checkSend() {
 		if (doingSend.compareAndSet(false, true)) {
 			StringBuilder str = new StringBuilder();
-			synchronized(queue) {
-				for (SocketIOFrame frame: queue) {
+            Collection<SocketIOFrame> elements = new LinkedList<SocketIOFrame>();
+            queue.drainTo(elements);
+            for (SocketIOFrame frame: elements) {
 					str.append(frame.encode());
 				}
-				queue.clear();
-			}
 			doSend(str.toString());
 		}
 	}

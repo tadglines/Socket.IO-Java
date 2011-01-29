@@ -26,6 +26,8 @@ package com.glines.socketio.sample.echo;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
@@ -36,34 +38,24 @@ import com.glines.socketio.server.SocketIOServlet;
 
 public class EchoSocketServlet extends SocketIOServlet {
 	private static final long serialVersionUID = 1L;
-	private Set<EchoConnection> connections = new HashSet<EchoConnection>();
 
 	private class EchoConnection implements SocketIOInbound {
-		private SocketIOOutbound outbound = null;
+		private volatile SocketIOOutbound outbound = null;
 
 		@Override
 		public String getProtocol() {
-			// TODO Auto-generated method stub
 			return null;
 		}
 
 		@Override
 		public void onConnect(SocketIOOutbound outbound) {
 			this.outbound = outbound;
-			synchronized (connections) {
-				connections.add(this);
-			}
 		}
 
 		@Override
 		public void onDisconnect(DisconnectReason reason, String errorMessage) {
-			synchronized(this) {
 				this.outbound = null;
 			}
-			synchronized (connections) {
-				connections.remove(this);
-			}
-		}
 
 		@Override
 		public void onMessage(int messageType, String message) {
