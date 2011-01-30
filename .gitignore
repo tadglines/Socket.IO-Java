@@ -20,3 +20,4 @@ dist
 war
 build.properties
 target
+com.glines.socketio.sample.gwtchat.GWTChat
