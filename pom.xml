@@ -64,19 +64,19 @@
 
     <distributionManagement>
         <!-- TODO: switch repositories when deploying on OSS Sonatype repos -->
-        <repository>
+        <!--<repository>
             <id>mc-release</id>
             <url>dav:https://mc-repo.googlecode.com/svn/maven2/releases</url>
-        </repository>
+        </repository>-->
         <!--<repository>
             <id>socketio-staging</id>
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>-->
-        <snapshotRepository>
+        <!--<snapshotRepository>
             <id>mc-snapshot</id>
             <url>dav:https://mc-repo.googlecode.com/svn/maven2/snapshots</url>
             <uniqueVersion>false</uniqueVersion>
-        </snapshotRepository>
+        </snapshotRepository>-->
         <!--<snapshotRepository>
             <id>socketio-snapshots</id>
             <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
@@ -213,8 +213,12 @@
                     <artifactId>maven-license-plugin</artifactId>
                     <version>1.9.0</version>
                     <configuration>
-                        <header>licenses/MIT</header>
+                        <header>https://github.com/tadglines/Socket.IO-Java/raw/master/licenses/MIT</header>
                         <strictCheck>true</strictCheck>
+                        <properties>
+                            <owner>Tad Glines</owner>
+                            <year>${project.inceptionYear}</year>
+                        </properties>
                         <excludes>
                             <exclude>.idea/**</exclude>
                             <exclude>README</exclude>
@@ -226,6 +230,7 @@
                             <exclude>**/logging.properties</exclude>
                             <exclude>**/*.js</exclude>
                             <exclude>**/*.swf</exclude>
+                            <exclude>**/com.glines.socketio.sample.gwtchat.GWTChat/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -293,36 +298,9 @@
                 <artifactId>maven-license-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>licensing-1</id>
                         <goals>
                             <goal>check</goal>
                         </goals>
-                        <configuration>
-                            <properties>
-                                <owner>Tad Glines</owner>
-                                <year>${project.inceptionYear}</year>
-                            </properties>
-                            <includes>
-                                <include>**/*.java</include>
-                                <include>**/*.xml</include>
-                                <include>**/*.html</include>
-                            </includes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>licensing-2</id>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <configuration>
-                            <properties>
-                                <owner>Ovea</owner>
-                                <year>2011</year>
-                            </properties>
-                            <includes>
-                                <include>PLACEHOLDER</include>
-                            </includes>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -392,44 +370,9 @@
             </dependency>
             <!-- Jetty -->
             <dependency>
-                <groupId>javax.servlet</groupId>
-                <artifactId>servlet-api</artifactId>
-                <version>2.5</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-client</artifactId>
-                <version>7.1.6.v20100715</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-continuation</artifactId>
-                <version>7.1.6.v20100715</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-io</artifactId>
-                <version>7.1.6.v20100715</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-server</artifactId>
-                <version>7.1.6.v20100715</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-servlet</artifactId>
-                <version>7.1.6.v20100715</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-util</artifactId>
-                <version>7.1.6.v20100715</version>
-            </dependency>
-            <dependency>
-                <groupId>org.eclipse.jetty</groupId>
-                <artifactId>jetty-websocket</artifactId>
-                <version>7.1.6.v20100715</version>
+                <groupId>org.testatoo.container</groupId>
+                <artifactId>testatoo-container-jetty</artifactId>
+                <version>1.0-rc1</version>
             </dependency>
             <!-- GWT -->
             <dependency>

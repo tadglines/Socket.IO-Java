@@ -19,54 +19,10 @@
     <description>Socket.IO Java Samples</description>
 
     <modules>
+        <module>echo</module>
         <module>broadcast</module>
         <module>chat</module>
         <module>chat-gwt</module>
-        <module>echo</module>
     </modules>
 
-    <dependencies>
-        <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>servlet-api</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-continuation</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-io</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-server</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-servlet</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-util</artifactId>
-            <!--
-                The jetty-maven-plugin won't include this jar on the class path unless
-                the scope is compile or runtime. Because maven doesn't support specifying multiple
-                scopes the scope here is set to "compile" and the jar is then excluded from the
-                war's via "packageExcludes"
-                TODO: Fix this once the jetty-maven-plugin gets fixed
-            -->
-            <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-websocket</artifactId>
-            <scope>provided</scope>
-        </dependency>
-    </dependencies>
 </project>
