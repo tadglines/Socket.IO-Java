@@ -34,7 +34,11 @@
 
     <servlet-mapping>
         <servlet-name>ChatSocketServlet</servlet-name>
-        <url-pattern>/socketio</url-pattern>
+        <url-pattern>/socket.io/*</url-pattern>
     </servlet-mapping>
+
+    <welcome-file-list>
+        <welcome-file>chat.html</welcome-file>
+    </welcome-file-list>
 
 </web-app>

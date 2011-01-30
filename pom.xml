@@ -18,43 +18,41 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <organization>
-        <name>Ovea</name>
-        <url>http://www.ovea.com/</url>
-    </organization>
-
     <developers>
         <developer>
-            <id>altus34</id>
+            <id>tadglines</id>
+            <name>Tad Glines</name>
+            <email>tad.glines@gmail.com</email>
+            <timezone>-8</timezone>
+            <roles>
+                <role>owner</role>
+                <role>developer</role>
+            </roles>
+        </developer>
+    </developers>
+
+    <contributors>
+        <contributor>
             <name>David Avenante</name>
             <email>d.avenante@ovea.com</email>
             <organization>Ovea</organization>
             <organizationUrl>http://www.ovea.com/</organizationUrl>
             <timezone>-5</timezone>
             <roles>
-                <role>developer</role>
+                <role>contributor</role>
             </roles>
-        </developer>
-        <developer>
-            <id>mathieucarbou</id>
+        </contributor>
+        <contributor>
             <name>Mathieu Carbou</name>
             <email>mathieu.carbou@gmail.com</email>
             <organization>Mycila</organization>
             <organizationUrl>http://www.mycila.com/</organizationUrl>
             <timezone>-5</timezone>
             <roles>
-                <role>developer</role>
+                <role>contributor</role>
             </roles>
-        </developer>
-        <developer>
-            <id>tadglines</id>
-            <name>Tad Glines</name>
-            <email>tad.glines@gmail.com</email>
-            <roles>
-                <role>developer</role>
-            </roles>
-        </developer>
-    </developers>
+        </contributor>
+    </contributors>
 
     <licenses>
         <license>
@@ -66,19 +64,19 @@
 
     <distributionManagement>
         <!-- TODO: switch repositories when deploying on OSS Sonatype repos -->
-        <repository>
+        <!--<repository>
             <id>mc-release</id>
             <url>dav:https://mc-repo.googlecode.com/svn/maven2/releases</url>
-        </repository>
+        </repository>-->
         <!--<repository>
             <id>socketio-staging</id>
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>-->
-        <snapshotRepository>
+        <!--<snapshotRepository>
             <id>mc-snapshot</id>
             <url>dav:https://mc-repo.googlecode.com/svn/maven2/snapshots</url>
             <uniqueVersion>false</uniqueVersion>
-        </snapshotRepository>
+        </snapshotRepository>-->
         <!--<snapshotRepository>
             <id>socketio-snapshots</id>
             <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
@@ -93,7 +91,7 @@
 
     <issueManagement>
         <system>github</system>
-        <url>https://github.com/Ovea/Socket.IO-Java/issues</url>
+        <url>https://github.com/tadglines/Socket.IO-Java/issues</url>
     </issueManagement>
 
     <ciManagement>
@@ -102,9 +100,9 @@
     </ciManagement>
 
     <scm>
-        <connection>scm:git:git@github.com:mathieucarbou/Socket.IO-Java.git</connection>
-        <developerConnection>scm:git:git@github.com:mathieucarbou/Socket.IO-Java.git</developerConnection>
-        <url>https://github.com/mathieucarbou/Socket.IO-Java</url>
+        <connection>scm:git:git@github.com:tadglines/Socket.IO-Java.git</connection>
+        <developerConnection>scm:git:git@github.com:tadglines/Socket.IO-Java.git</developerConnection>
+        <url>https://github.com/tadglines/Socket.IO-Java</url>
     </scm>
 
     <modules>
@@ -155,8 +153,8 @@
                     <version>1.1</version>
                     <configuration>
                         <useAgent>false</useAgent>
-                        <!-- Ovea GPG key ID -->
-                        <keyname>F82FA7FE</keyname>
+                        <!-- GPG key ID for Tad Glines -->
+                        <keyname>29D37D27</keyname>
                     </configuration>
                 </plugin>
                 <plugin>
@@ -190,8 +188,7 @@
                         <encoding>UTF-8</encoding>
                         <maxmemory>1g</maxmemory>
                         <links>
-                            <link>http://java.sun.com/javase/6/docs/api/</link>
-                            <link>http://java.sun.com/javaee/5/docs/api</link>
+                            <link>http://download.oracle.com/javase/6/docs/api/</link>
                         </links>
                     </configuration>
                 </plugin>
@@ -216,10 +213,16 @@
                     <artifactId>maven-license-plugin</artifactId>
                     <version>1.9.0</version>
                     <configuration>
-                        <header>https://github.com/mathieucarbou/licenses/raw/master/MIT</header>
+                        <header>https://github.com/tadglines/Socket.IO-Java/raw/master/licenses/MIT</header>
                         <strictCheck>true</strictCheck>
+                        <properties>
+                            <owner>Tad Glines</owner>
+                            <year>${project.inceptionYear}</year>
+                        </properties>
                         <excludes>
+                            <exclude>.idea/**</exclude>
                             <exclude>README</exclude>
+                            <exclude>licenses/**</exclude>
                             <exclude>src/test/resources/**</exclude>
                             <exclude>**/*.ods</exclude>
                             <exclude>**/.gitignore</exclude>
@@ -227,6 +230,7 @@
                             <exclude>**/logging.properties</exclude>
                             <exclude>**/*.js</exclude>
                             <exclude>**/*.swf</exclude>
+                            <exclude>**/com.glines.socketio.sample.gwtchat.GWTChat/**</exclude>
                         </excludes>
                     </configuration>
                 </plugin>
@@ -294,36 +298,9 @@
                 <artifactId>maven-license-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>licensing-1</id>
                         <goals>
                             <goal>check</goal>
                         </goals>
-                        <configuration>
-                            <properties>
-                                <owner>Tad Glines</owner>
-                                <year>${project.inceptionYear}</year>
-                            </properties>
-                            <includes>
-                                <include>**/*.java</include>
-                                <include>**/*.xml</include>
-                                <include>**/*.html</include>
-                            </includes>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>licensing-2</id>
-                        <goals>
-                            <goal>check</goal>
-                        </goals>
-                        <configuration>
-                            <properties>
-                                <owner>Ovea</owner>
-                                <year>2011</year>
-                            </properties>
-                            <includes>
-                                <include>PLACEHOLDER</include>
-                            </includes>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -364,8 +341,7 @@
                     <encoding>UTF-8</encoding>
                     <maxmemory>1g</maxmemory>
                     <links>
-                        <link>http://java.sun.com/javase/6/docs/api/</link>
-                        <link>http://java.sun.com/javaee/5/docs/api</link>
+                        <link>http://download.oracle.com/javase/6/docs/api/</link>
                     </links>
                 </configuration>
             </plugin>
@@ -396,7 +372,7 @@
             <dependency>
                 <groupId>org.testatoo.container</groupId>
                 <artifactId>testatoo-container-jetty</artifactId>
-                <version>1.0-rc1-SNAPSHOT</version>
+                <version>1.0-rc1</version>
             </dependency>
             <!-- GWT -->
             <dependency>

@@ -192,8 +192,8 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
             Collection<SocketIOFrame> elements = new LinkedList<SocketIOFrame>();
             queue.drainTo(elements);
             for (SocketIOFrame frame: elements) {
-                str.append(frame.encode());
-            }
+					str.append(frame.encode());
+				}
 			doSend(str.toString());
 		}
 	}

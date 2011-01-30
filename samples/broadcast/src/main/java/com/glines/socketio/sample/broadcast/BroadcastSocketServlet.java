@@ -35,7 +35,6 @@ import java.util.concurrent.LinkedBlockingQueue;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
-import com.glines.socketio.server.SocketIOFrame;
 import org.eclipse.jetty.util.log.Log;
 
 import com.glines.socketio.common.DisconnectReason;
@@ -62,9 +61,9 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 
 		@Override
 		public void onDisconnect(DisconnectReason reason, String errorMessage) {
-            this.outbound = null;
-            connections.remove(this);
-		}
+				this.outbound = null;
+				connections.remove(this);
+			}
 
 		@Override
 		public void onMessage(int messageType, String message) {
@@ -73,17 +72,17 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 
 		private void broadcast(int messageType, String message) {
 			Log.debug("Broadcasting: " + message);
-            for(BroadcastConnection c: connections) {
-                if (c != this) {
-                    try {
-                        c.outbound.sendMessage(messageType, message);
-                    } catch (IOException e) {
-                        c.outbound.disconnect();
-                    }
-                }
-            }
+				for(BroadcastConnection c: connections) {
+					if (c != this) {
+						try {
+							c.outbound.sendMessage(messageType, message);
+						} catch (IOException e) {
+							c.outbound.disconnect();
+						}
+					}
+				}
+			}
 		}
-	}
 
 	@Override
 	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request, String[] protocols) {

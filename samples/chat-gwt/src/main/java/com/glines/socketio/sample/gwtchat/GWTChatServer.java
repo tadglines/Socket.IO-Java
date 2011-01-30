@@ -48,7 +48,7 @@ public class GWTChatServer {
 			path = path.substring(req.getContextPath().length());
 			if ("/gwtchat.html".equals(path)) {
 				resp.setContentType("text/html");
-				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/sample/gwtchat/gwtchat.html");
+				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/examples/gwtchat/gwtchat.html");
 				OutputStream os = resp.getOutputStream();
 				byte[] data = new byte[8192];
 				int nread = 0;

@@ -29,12 +29,12 @@
 
     <servlet>
         <servlet-name>EchoSocketServlet</servlet-name>
-        <servlet-class>com.glines.socketio.examples.echo.EchoSocketServlet</servlet-class>
+        <servlet-class>com.glines.socketio.sample.echo.EchoSocketServlet</servlet-class>
     </servlet>
 
     <servlet-mapping>
         <servlet-name>EchoSocketServlet</servlet-name>
-        <url-pattern>/socketio</url-pattern>
+        <url-pattern>/socket.io/*</url-pattern>
     </servlet-mapping>
 
 </web-app>

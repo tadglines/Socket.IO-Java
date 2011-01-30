@@ -22,23 +22,25 @@
  */
 package com.glines.socketio.server;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.eclipse.jetty.util.IO;
+
 import com.glines.socketio.server.transport.FlashSocketTransport;
 import com.glines.socketio.server.transport.HTMLFileTransport;
 import com.glines.socketio.server.transport.JSONPPollingTransport;
 import com.glines.socketio.server.transport.WebSocketTransport;
 import com.glines.socketio.server.transport.XHRMultipartTransport;
 import com.glines.socketio.server.transport.XHRPollingTransport;
-import org.eclipse.jetty.util.IO;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  */
@@ -83,10 +85,10 @@ public abstract class SocketIOServlet extends HttpServlet {
         serve(req, resp);
     }
 
-    @Override
+	@Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         serve(req, resp);
-    }
+	}
 
     private void serve(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 

@@ -76,8 +76,8 @@ public class ChatSocketServlet extends SocketIOServlet {
 
 		@Override
 		public void onDisconnect(DisconnectReason reason, String errorMessage) {
-            this.outbound = null;
-            connections.remove(this);
+				this.outbound = null;
+				connections.remove(this);
 			broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
 					Collections.singletonMap("announcement", sessionId + " disconnected")));
 		}
@@ -149,17 +149,17 @@ public class ChatSocketServlet extends SocketIOServlet {
 
 		private void broadcast(int messageType, String message) {
 			Log.debug("Broadcasting: " + message);
-            for(ChatConnection c: connections) {
-                if (c != this) {
-                    try {
-                        c.outbound.sendMessage(messageType, message);
-                    } catch (IOException e) {
-                        c.outbound.disconnect();
-                    }
-                }
-            }
+				for(ChatConnection c: connections) {
+					if (c != this) {
+						try {
+							c.outbound.sendMessage(messageType, message);
+						} catch (IOException e) {
+							c.outbound.disconnect();
+						}
+					}
+				}
+			}
 		}
-	}
 
 	@Override
 	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request, String[] protocols) {

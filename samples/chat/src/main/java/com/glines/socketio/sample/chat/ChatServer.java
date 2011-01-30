@@ -47,7 +47,7 @@ public class ChatServer {
 			path = path.substring(req.getContextPath().length());
 			if ("/json.js".equals(path)) {
 				resp.setContentType("text/javascript");
-				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/sample/chat/json.js");
+				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/examples/chat/json.js");
 				OutputStream os = resp.getOutputStream();
 				byte[] data = new byte[8192];
 				int nread = 0;
@@ -59,7 +59,7 @@ public class ChatServer {
 				}
 			} else if ("/chat.html".equals(path)) {
 				resp.setContentType("text/html");
-				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/sample/chat/chat.html");
+				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/examples/chat/chat.html");
 				OutputStream os = resp.getOutputStream();
 				byte[] data = new byte[8192];
 				int nread = 0;

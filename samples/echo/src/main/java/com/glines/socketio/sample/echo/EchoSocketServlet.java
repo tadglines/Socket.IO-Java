@@ -20,7 +20,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.glines.socketio.examples.echo;
+package com.glines.socketio.sample.echo;
 
 import java.io.IOException;
 import java.util.HashSet;
@@ -53,8 +53,8 @@ public class EchoSocketServlet extends SocketIOServlet {
 
 		@Override
 		public void onDisconnect(DisconnectReason reason, String errorMessage) {
-            this.outbound = null;
-		}
+				this.outbound = null;
+			}
 
 		@Override
 		public void onMessage(int messageType, String message) {

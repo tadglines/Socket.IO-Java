@@ -13,9 +13,11 @@ dist
 .git
 *~
 .DS_Store
+.idea
 .settings
 .project
 .classpath
 war
 build.properties
 target
+com.glines.socketio.sample.gwtchat.GWTChat

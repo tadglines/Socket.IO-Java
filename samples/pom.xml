@@ -19,7 +19,6 @@
     <description>Socket.IO Java Samples</description>
 
     <modules>
-        <module>text</module>
         <module>echo</module>
         <module>broadcast</module>
         <module>chat</module>

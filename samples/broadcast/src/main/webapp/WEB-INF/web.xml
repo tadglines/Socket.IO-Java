@@ -34,7 +34,7 @@
 
     <servlet-mapping>
         <servlet-name>BroadcastSocketServlet</servlet-name>
-        <url-pattern>/socketio</url-pattern>
+        <url-pattern>/socket.io/*</url-pattern>
     </servlet-mapping>
 
 </web-app>

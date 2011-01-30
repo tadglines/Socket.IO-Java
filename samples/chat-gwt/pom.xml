@@ -23,6 +23,7 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>gwt-maven-plugin</artifactId>
                 <configuration>
+                    <inplace>true</inplace>
                     <logLevel>INFO</logLevel>
                     <style>PRETTY</style>
                     <enableAssertions>true</enableAssertions>
