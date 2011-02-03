@@ -37,7 +37,7 @@ public interface SocketIOSession {
 		SocketIOSession getSession(String sessionId);
 	}
 
-	interface SessionTransportHandler extends SocketIOInbound.SocketIOOutbound {
+	interface SessionTransportHandler extends SocketIOOutbound {
 		void handle(HttpServletRequest request, HttpServletResponse response, SocketIOSession session) throws IOException;
 		void sendMessage(SocketIOFrame message) throws SocketIOException;
 		void disconnectWhenEmpty();

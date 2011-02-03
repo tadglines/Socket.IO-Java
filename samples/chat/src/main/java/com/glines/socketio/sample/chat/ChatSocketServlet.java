@@ -23,19 +23,14 @@
 package com.glines.socketio.sample.chat;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.servlet.http.HttpServletRequest;
 
+import com.glines.socketio.server.SocketIOOutbound;
 import org.eclipse.jetty.util.ajax.JSON;
 import org.eclipse.jetty.util.log.Log;
 

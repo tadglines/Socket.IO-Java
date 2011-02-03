@@ -23,18 +23,12 @@
 package com.glines.socketio.sample.broadcast;
 
 import java.io.IOException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.Queue;
-import java.util.Set;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
+import com.glines.socketio.server.SocketIOOutbound;
 import org.eclipse.jetty.util.log.Log;
 
 import com.glines.socketio.common.DisconnectReason;

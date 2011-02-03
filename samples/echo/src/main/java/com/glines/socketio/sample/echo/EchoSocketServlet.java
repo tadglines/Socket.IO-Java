@@ -23,16 +23,12 @@
 package com.glines.socketio.sample.echo;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
-import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOOutbound;
 import com.glines.socketio.server.SocketIOServlet;
 
 public class EchoSocketServlet extends SocketIOServlet {
