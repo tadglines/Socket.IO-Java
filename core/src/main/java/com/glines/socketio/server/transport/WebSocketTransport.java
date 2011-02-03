@@ -241,8 +241,7 @@ public class WebSocketTransport extends AbstractTransport {
 	        	origin = host;
 	        }
 	
-	        SocketIOInbound inbound = inboundFactory.getInbound(request,
-	        		protocol == null ? null : protocol.split(" "));
+	        SocketIOInbound inbound = inboundFactory.getInbound(request);
 	        if (inbound == null) {
 	        	if (hixie) {
                     response.setHeader("Connection","close");

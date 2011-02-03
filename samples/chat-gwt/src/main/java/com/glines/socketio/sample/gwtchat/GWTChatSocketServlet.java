@@ -117,7 +117,7 @@ public class GWTChatSocketServlet extends SocketIOServlet {
 		}
 
 	@Override
-	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request, String[] protocols) {
+	protected SocketIOInbound doSocketIOConnect(HttpServletRequest request) {
 		return new GWTChatConnection();
 	}
 

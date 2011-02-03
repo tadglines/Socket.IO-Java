@@ -375,7 +375,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 			HttpServletResponse response, Transport.InboundFactory inboundFactory,
 			com.glines.socketio.server.SocketIOSession.Factory sessionFactory)
 			throws IOException {
-		SocketIOInbound inbound = inboundFactory.getInbound(request, null);
+		SocketIOInbound inbound = inboundFactory.getInbound(request);
 		if (inbound != null) {
  			SocketIOSession session = sessionFactory.createSession(inbound);
 			XHRSessionHelper handler =  createHelper(session);
