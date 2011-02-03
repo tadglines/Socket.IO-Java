@@ -28,14 +28,6 @@ import com.glines.socketio.common.DisconnectReason;
 
 public interface SocketIOInbound {
 
-    /**
-	 * Return the name of the protocol this inbound is associated with.
-	 * This is one of the values provided by
-	 * {@link SocketIOServlet#doSocketIOConnect(HttpServletRequest, String[])}.
-	 * @return
-	 */
-	String getProtocol();
-	
 	/**
 	 * Called when the connection is established. This will only ever be called once.
 	 * @param outbound The SocketOutbound associated with the connection

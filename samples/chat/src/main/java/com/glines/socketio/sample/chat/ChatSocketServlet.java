@@ -50,12 +50,6 @@ public class ChatSocketServlet extends SocketIOServlet {
 		private Integer sessionId = ids.getAndIncrement();
 
 		@Override
-		public String getProtocol() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
 		public void onConnect(SocketIOOutbound outbound) {
 			this.outbound = outbound;
             connections.offer(this);

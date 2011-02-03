@@ -50,11 +50,6 @@ public class GWTChatSocketServlet extends SocketIOServlet {
 		private Integer sessionId = ids.getAndIncrement();
 
 		@Override
-		public String getProtocol() {
-			return null;
-		}
-
-		@Override
 		public void onConnect(SocketIOOutbound outbound) {
 			this.outbound = outbound;
             connections.offer(this);

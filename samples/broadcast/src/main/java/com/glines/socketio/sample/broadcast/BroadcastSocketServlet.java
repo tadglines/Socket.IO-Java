@@ -43,11 +43,6 @@ public class BroadcastSocketServlet extends SocketIOServlet {
 		private volatile SocketIOOutbound outbound = null;
 
 		@Override
-		public String getProtocol() {
-			return null;
-		}
-
-		@Override
 		public void onConnect(SocketIOOutbound outbound) {
 			this.outbound = outbound;
             connections.offer(this);
