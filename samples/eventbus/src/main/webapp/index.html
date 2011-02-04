@@ -1,0 +1,135 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+    <title>EventBus</title>
+    <script type="text/javascript" src="jquery-1.4.4.min.js"></script>
+    <script type="text/javascript" src="jquery.json-2.2.min.js"></script>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript">
+        (function($) {
+
+            var MessageType = {
+                SUBSCRIBE: 1,
+                UNSUBSCRIBE: 2,
+                PUBLISH: 3,
+                ACK: 4,
+                CLOSE: 5
+            };
+
+            var retries = 0;
+            var ready = false;
+            var queue = [];
+            var socket = new io.Socket();
+
+            function send(msg) {
+                if (ready) {
+                    socket.send($.toJSON([msg]));
+                } else {
+                    queue.push(msg);
+                }
+            }
+
+            function onConnect() {
+                console.info('Connected !');
+                ready = true;
+                if (queue.length > 0) {
+                    var q = queue;
+                    queue = [];
+                    console.debug('onConnect - dequeuing: ', $.toJSON(q));
+                    socket.send($.toJSON(q));
+                }
+            }
+
+            function onMessage(mtype, obj, error) {
+                console.debug('onMessage - type=' + mtype + ', err=' + error + ', data=' + $.toJSON(obj));
+                var msg = $.parseJSON(obj);
+                if (msg.type == MessageType.PUBLISH) {
+                    $('body').append('<p>Firing JSON data ' + msg.data + ' in topic ' + msg.topic + '</p>');
+                }
+            }
+
+            function onDisconnect(disconnectReason, errorMessage) {
+                console.debug('onDisconnect - reason=' + disconnectReason + ', err=' + errorMessage);
+                if (ready) {
+                    ready = false;
+                    if (retries < 5) {
+                        retries++;
+                        console.info('Reconnecting (retry=' + retries + ')...');
+                        socket.connect();
+                    }
+                }
+            }
+
+            window.TESTER = {
+                socket: socket,
+                start: function() {
+                    if (!ready) {
+                        console.info('Starting...');
+                        socket.on('connect', onConnect);
+                        socket.on('disconnect', onDisconnect);
+                        socket.on('message', onMessage);
+                        socket.connect();
+                    }
+                },
+                stop: function() {
+                    if (ready) {
+                        ready = false;
+                        console.info('Stopping...');
+                        socket.removeEvent('connect', onConnect);
+                        socket.removeEvent('disconnect', onDisconnect);
+                        socket.removeEvent('message', onMessage);
+                        socket.send($.toJSON([
+                            {type: MessageType.CLOSE}
+                        ]));
+                        socket.disconnect();
+                    }
+                },
+                publish: function(topic, data) {
+                    data = $.toJSON(data);
+                    console.debug('publish on topic ' + topic + ' data:' + data);
+                    send({
+                        type: MessageType.PUBLISH,
+                        topic: topic,
+                        data: data
+                    });
+                },
+                subscribe: function(topic) {
+                    console.debug('subscribe - topic=' + topic);
+                    send({
+                        type: MessageType.SUBSCRIBE,
+                        topic: topic
+                    });
+                },
+                unsubscribe: function(topic) {
+                    console.debug('unsubscribe - topic=' + topic);
+                    send({
+                        type: MessageType.UNSUBSCRIBE,
+                        topic: topic
+                    });
+                }
+            };
+        })(jQuery);
+    </script>
+</head>
+<body>
+<p><strong>In the Firebug console, execute:</strong></p>
+<pre>TESTER.start();</pre>
+Firefox connects... And you see the ping pong exchanges each 15 seconds. Then execute:
+<pre>TESTER.subscribe('myTopic');</pre>
+Then:
+<pre>TESTER.publish('myTopic', 'myMessage');</pre>
+You should see the message appended below this page. Then execute:
+<pre>TESTER.stop();</pre>
+A message is sent to the server, telling him that we stopped the eventbus. The server then executes outboud.close();<br>
+In Firefox 3.6 on Ubuntu, the post request is aborted. You can see in the Firebug console the request will be in red.<br>
+To verify that the '_posting' state is not OK, execute:
+<pre>alert(TESTER.socket.transport._posting)</pre>
+The value is true because the aborted request seemed to have stopped the script. That's why if we execute now: socket.connect(); I made sure this value is resetted to false before with the patch<br>
+Try to reconnect:
+<pre>TESTER.start();</pre>
+You'll see a timeout after 15 seconds: the server sends the 3~1~1 ping but the library does not respond, due to the _posting flag being true with the old version of the library.<br/>
+After the patch, the post of the pong reply is done correclty.
+<hr/>
+</body>
+</html>

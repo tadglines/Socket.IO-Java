@@ -21,6 +21,7 @@
     <modules>
         <module>echo</module>
         <module>broadcast</module>
+        <module>eventbus</module>
         <module>chat</module>
         <module>chat-gwt</module>
     </modules>
