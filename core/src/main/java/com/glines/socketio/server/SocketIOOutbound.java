@@ -38,8 +38,6 @@ public interface SocketIOOutbound {
      * Initiate an orderly close of the connection. The state will be changed to CLOSING so no
      * new messages can be sent, but messages may still arrive until the distant end has
      * acknowledged the close.
-     *
-     * @param closeType
      */
     void close();
 
@@ -52,16 +50,17 @@ public interface SocketIOOutbound {
      * the SocketClosedException will be thrown.
      *
      * @param message The message to send
-     * @throws com.glines.socketio.common.SocketIOException
+     * @throws SocketIOException
      */
     void sendMessage(String message) throws SocketIOException;
 
     /**
      * Send a message.
      *
+     * @param messageType
      * @param message
      * @throws IllegalStateException if the socket is not CONNECTED.
-     * @throws SocketIOMessageParserException if the message type parser encode() failed.
+     * @throws SocketIOException
      */
     void sendMessage(int messageType, String message) throws SocketIOException;
 }

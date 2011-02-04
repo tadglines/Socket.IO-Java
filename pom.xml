@@ -64,19 +64,19 @@
 
     <distributionManagement>
         <!-- TODO: switch repositories when deploying on OSS Sonatype repos -->
-        <!--<repository>
+        <repository>
             <id>mc-release</id>
             <url>dav:https://mc-repo.googlecode.com/svn/maven2/releases</url>
-        </repository>-->
+        </repository>
         <!--<repository>
             <id>socketio-staging</id>
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
         </repository>-->
-        <!--<snapshotRepository>
+        <snapshotRepository>
             <id>mc-snapshot</id>
             <url>dav:https://mc-repo.googlecode.com/svn/maven2/snapshots</url>
             <uniqueVersion>false</uniqueVersion>
-        </snapshotRepository>-->
+        </snapshotRepository>
         <!--<snapshotRepository>
             <id>socketio-snapshots</id>
             <url>https://oss.sonatype.org/content/repositories/snapshots/</url>

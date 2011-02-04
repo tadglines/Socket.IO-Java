@@ -68,11 +68,6 @@ public class WebSocketTransport extends AbstractTransport {
 			this.outbound = outbound;
 		}
 
-        @Override
-        public void onFragment(boolean more, byte opcode, byte[] data, int offset, int length) {
-            throw new UnsupportedOperationException();
-        }
-
         /*
            * (non-Javadoc)
            * @see org.eclipse.jetty.websocket.WebSocket#onDisconnect()
@@ -128,6 +123,11 @@ public class WebSocketTransport extends AbstractTransport {
             	// Do nothing for now.
             }
 		}
+
+        @Override
+        public void onFragment(boolean more, byte opcode, byte[] data, int offset, int length) {
+            throw new UnsupportedOperationException();
+        }
 
 		/*
 		 * (non-Javadoc)

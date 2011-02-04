@@ -109,7 +109,7 @@ public interface SocketIOSession {
 	
 	/**
 	 * Pass disconnect through to contained SocketIOInbound and update any internal state.
-	 * @param message
+	 * @param reason
 	 */
 	void onDisconnect(DisconnectReason reason);
 

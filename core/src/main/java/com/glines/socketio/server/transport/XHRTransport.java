@@ -119,7 +119,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 						} catch (IOException e) {
 							throw new SocketIOException(e);
 						}
-						if (!isConnectionPersistant) {
+						if (!isConnectionPersistant && !continuation.isInitial()) {
 							Continuation cont = continuation;
 							continuation = null;
 							cont.complete();
@@ -321,10 +321,14 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 			is_open = true;
 			session.onConnect(this);
 			finishSend(response);
-			if (isConnectionPersistant && continuation != null) {
-				request.setAttribute(CONTINUATION_KEY, continuation);
-				continuation.suspend(response);
-			}
+            if (continuation != null) {
+                if (isConnectionPersistant) {
+                    request.setAttribute(CONTINUATION_KEY, continuation);
+                    continuation.suspend(response);
+                } else {
+                    continuation = null;
+                }
+            }
 		}
 
 		@Override
@@ -349,7 +353,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 				public boolean onMessages(List<String> messages) {
 					return false;
 				}
-				
+
 				@Override
 				public boolean onMessage(String message) {
 					return false;

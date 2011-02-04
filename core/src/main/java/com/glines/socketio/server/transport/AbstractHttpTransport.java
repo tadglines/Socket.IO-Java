@@ -74,11 +74,12 @@ public abstract class AbstractHttpTransport extends AbstractTransport {
 
 		Object obj = request.getAttribute(SESSION_KEY);
 		SocketIOSession session = null;
+		String sessionId = null;
 		if (obj != null) {
 			session = (SocketIOSession)obj;
 		} else {
-			String sessionId = extractSessionId(request);
-			if (sessionId != null) {
+			sessionId = extractSessionId(request);
+			if (sessionId != null && sessionId.length() > 0) {
 				session = sessionFactory.getSession(sessionId);
 			}
 		}
@@ -89,16 +90,18 @@ public abstract class AbstractHttpTransport extends AbstractTransport {
 				handler.handle(request, response, session);
 			} else {
 				session.onShutdown();
-	    		response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+				response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
 			}
+		} else if (sessionId != null && sessionId.length() > 0) {
+			response.sendError(HttpServletResponse.SC_BAD_REQUEST);
 		} else {
 			if ("GET".equals(request.getMethod())) {
-	 			session = connect(request, response, inboundFactory, sessionFactory);
-	 			if (session == null) {
-	 				response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
-	 			}
+				session = connect(request, response, inboundFactory, sessionFactory);
+				if (session == null) {
+					response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+				}
 			} else {
- 				response.sendError(HttpServletResponse.SC_BAD_REQUEST);
+				response.sendError(HttpServletResponse.SC_BAD_REQUEST);
 			}
 		}
 	}
