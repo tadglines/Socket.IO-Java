@@ -57,8 +57,6 @@ public class XHRMultipartTransport extends XHRTransport {
 		protected void startSend(HttpServletResponse response) throws IOException {
 			response.setContentType(contentType);
 			response.setHeader("Connection", "keep-alive");
-			char[] spaces = new char[244];
-			Arrays.fill(spaces, ' ');
 			ServletOutputStream os = response.getOutputStream();
 			os.print(boundarySeperator);
 			response.flushBuffer();

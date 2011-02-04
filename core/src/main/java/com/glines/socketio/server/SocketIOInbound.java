@@ -42,8 +42,6 @@ public interface SocketIOInbound {
 		 * Initiate an orderly close of the connection. The state will be changed to CLOSING so no
 		 * new messages can be sent, but messages may still arrive until the distant end has
 		 * acknowledged the close.
-		 * 
-		 * @param closeType
 		 */
 		void close();
 		
@@ -63,9 +61,10 @@ public interface SocketIOInbound {
 		/**
 		 * Send a message.
 		 * 
-		 * @param message
+		 * @param messageType
+         * @param message
 		 * @throws IllegalStateException if the socket is not CONNECTED.
-		 * @throws SocketIOMessageParserException if the message type parser encode() failed.
+		 * @throws SocketIOException
 		 */
 		void sendMessage(int messageType, String message) throws SocketIOException;
 	}
@@ -98,7 +97,6 @@ public interface SocketIOInbound {
 	 * Called one per arriving message.
 	 * @param messageType
 	 * @param message
-	 * @param parseError
 	 */
 	void onMessage(int messageType, String message);
 }
