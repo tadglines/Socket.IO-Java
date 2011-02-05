@@ -113,7 +113,7 @@ public class EventBusServlet extends SocketIOServlet {
         @Override
         public void onDisconnect(DisconnectReason reason, String errorMessage) {
             if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, this + " disconnected.");
+                LOGGER.log(Level.FINE, this + " disconnected: reason=" + reason);
             this.outbound = null;
             for (Endpoints ee : subscriptions.values())
                 ee.remove(this);
@@ -156,10 +156,6 @@ public class EventBusServlet extends SocketIOServlet {
                             Endpoints ee = subscriptions.get(topic);
                             if (ee != null)
                                 ee.fire(topic, data);
-                            break;
-                        }
-                        case CLOSE: {
-                            close();
                             break;
                         }
                         default: {
@@ -249,7 +245,6 @@ public class EventBusServlet extends SocketIOServlet {
     private static enum MessageType {
 
         ACK(4),
-        CLOSE(5),
         SUBSCRIBE(1),
         UNSUBSCRIBE(2),
         PUBLISH(3),
