@@ -232,6 +232,16 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 								}
 							}
 						}
+                        // Ensure that the disconnectWhenEmpty flag is obeyed in the case where
+                        // it is set during a POST.
+                        synchronized (this) {
+                            if (disconnectWhenEmpty && buffer.isEmpty()) {
+                                if (session.getConnectionState() == ConnectionState.CLOSING) {
+                                    session.onDisconnect(DisconnectReason.CLOSED);
+                                }
+                                abort();
+                            }
+                        }
 					}
 				}
 			} else {
