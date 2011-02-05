@@ -261,6 +261,8 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 				try {
 					handler.sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.CLOSE, 0, data));
 					handler.disconnectWhenEmpty();
+                    if ("client".equals(data))
+                        onDisconnect(DisconnectReason.CLOSED_REMOTELY);
 				} catch (SocketIOException e) {
 					Log.debug("handler.sendMessage failed: ", e);
 					handler.abort();
