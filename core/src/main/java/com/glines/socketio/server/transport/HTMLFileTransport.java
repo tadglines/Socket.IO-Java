@@ -30,11 +30,10 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.util.ajax.JSON;
-
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
 import com.glines.socketio.server.transport.ConnectionTimeoutPreventor.IdleCheck;
+import com.glines.socketio.util.JSON;
 
 public class HTMLFileTransport extends XHRTransport {
 	public static final String TRANSPORT_NAME = "htmlfile";

@@ -41,10 +41,9 @@ import javax.servlet.ServletConfig;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.eclipse.jetty.util.IO;
-
 import com.glines.socketio.server.SocketIOSession;
 import com.glines.socketio.server.Transport;
+import com.glines.socketio.util.IO;
 
 public class FlashSocketTransport extends WebSocketTransport {
 	public static final String TRANSPORT_NAME = "flashsocket";

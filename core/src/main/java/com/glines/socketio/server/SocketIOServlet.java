@@ -22,25 +22,18 @@
  */
 package com.glines.socketio.server;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
+import com.glines.socketio.server.transport.*;
+import com.glines.socketio.util.IO;
 
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.eclipse.jetty.util.IO;
-
-import com.glines.socketio.server.transport.FlashSocketTransport;
-import com.glines.socketio.server.transport.HTMLFileTransport;
-import com.glines.socketio.server.transport.JSONPPollingTransport;
-import com.glines.socketio.server.transport.WebSocketTransport;
-import com.glines.socketio.server.transport.XHRMultipartTransport;
-import com.glines.socketio.server.transport.XHRPollingTransport;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  */
@@ -106,7 +99,7 @@ public abstract class SocketIOServlet extends HttpServlet {
 				response.setContentType("text/javascript");
 				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/socket.io.js");
 				OutputStream os = response.getOutputStream();
-				IO.copy(is, os);
+                IO.copy(is, os);
 				return;
     		} else {
 	    		response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown SocketIO transport");

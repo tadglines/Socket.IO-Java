@@ -27,10 +27,10 @@ import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
 import com.glines.socketio.server.*;
 import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
+import com.glines.socketio.util.IO;
 import org.eclipse.jetty.continuation.Continuation;
 import org.eclipse.jetty.continuation.ContinuationListener;
 import org.eclipse.jetty.continuation.ContinuationSupport;
-import org.eclipse.jetty.util.IO;
 import org.eclipse.jetty.util.URIUtil;
 
 import javax.servlet.ServletResponse;
@@ -46,8 +46,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 
     private static final Logger LOGGER = Logger.getLogger(XHRTransport.class.getName());
 
-	public static final String CONTINUATION_KEY =
-		"com.glines.socketio.server.transport.XHRTransport.Continuation";
+	public static final String CONTINUATION_KEY = XHRTransport.class.getName() + ".Continuation";
 	private final int bufferSize;
 	private final int maxIdleTime;
 
