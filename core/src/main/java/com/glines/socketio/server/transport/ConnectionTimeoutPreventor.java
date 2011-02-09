@@ -33,7 +33,7 @@ import org.eclipse.jetty.server.HttpConnection;
  * SocketIO transport. IN order to prevent this, without disabling the maxIdleTime completely,
  * this class is used to obtain a @{link IdleCheck} instance that can be used to reset the idle timeout.
  */
-public class ConnectionTimeoutPreventor {
+final class ConnectionTimeoutPreventor {
 	interface IdleCheck {
 		void activity();
 	}
