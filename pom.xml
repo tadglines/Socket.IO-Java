@@ -376,6 +376,11 @@
             </dependency>
             <!-- Jetty -->
             <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-client</artifactId>
+                <version>8.0.0.M2</version>
+            </dependency>
+            <dependency>
                 <groupId>org.testatoo.container</groupId>
                 <artifactId>testatoo-container-jetty</artifactId>
                 <version>1.0-rc1</version>

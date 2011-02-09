@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.glines.socketio.extension</groupId>
+        <artifactId>socketio-extension</artifactId>
+        <version>0.1-SNAPSHOT</version>
+        <relativePath>..</relativePath>
+    </parent>
+
+    <artifactId>socketio-jre</artifactId>
+    <packaging>jar</packaging>
+
+    <name>Socket.IO Extension JRE</name>
+    <description>Socket.IO Java JRE Extension</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.glines.socketio</groupId>
+            <artifactId>socketio-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-client</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

@@ -19,6 +19,7 @@
     <description>Socket.IO Java Extensions</description>
 
     <modules>
+        <module>jre</module>
         <module>gwt</module>
     </modules>
 
