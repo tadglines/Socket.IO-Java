@@ -30,7 +30,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class TransportBuffer {
+final class TransportBuffer {
 	public interface BufferListener {
 		/**
 		 * @param message
