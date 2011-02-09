@@ -20,30 +20,67 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.glines.socketio.sample.echo;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import com.glines.socketio.sample.gwtchat.GWTChatSocketServlet;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.nio.SelectChannelConnector;
+import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
 import com.glines.socketio.server.transport.FlashSocketTransport;
 
-public class EchoServer {
+public class GWTChatServer {
+	private static class StaticServlet extends HttpServlet {
+		@Override
+		protected void doGet(HttpServletRequest req, HttpServletResponse resp)
+				throws ServletException, IOException {
+			String path = req.getRequestURI();
+			path = path.substring(req.getContextPath().length());
+			if ("/gwtchat.html".equals(path)) {
+				resp.setContentType("text/html");
+				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/examples/gwtchat/gwtchat.html");
+				OutputStream os = resp.getOutputStream();
+				byte[] data = new byte[8192];
+				int nread = 0;
+				while ((nread = is.read(data)) > 0) {
+					os.write(data, 0, nread);
+					if (nread < data.length) {
+						break;
+					}
+				}
+			}
+		}
+	}
+
 	/**
 	 * @param args
 	 * @throws Exception 
 	 */
 	public static void main(String[] args) throws Exception {
+		String war_dir = "./war";
 		String host = "localhost";
 		int port = 8080;
 
 		if (args.length > 0) {
-			host = args[0];
+			war_dir = args[0];
 		}
 
 		if (args.length > 1) {
-			port = Integer.parseInt(args[1]);
+			host = args[1];
+		}
+
+		if (args.length > 2) {
+			port = Integer.parseInt(args[2]);
 		}
 		
 		Server server = new Server();
@@ -54,11 +91,15 @@ public class EchoServer {
 	    server.addConnector(connector);
 
 	    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-	    ServletHolder holder = new ServletHolder(new EchoSocketServlet());
+	    context.setResourceBase(war_dir);
+	    ServletHolder holder = new ServletHolder(new GWTChatSocketServlet());
 	    holder.setInitParameter(FlashSocketTransport.FLASHPOLICY_SERVER_HOST_KEY, host);
 	    holder.setInitParameter(FlashSocketTransport.FLASHPOLICY_DOMAIN_KEY, host);
 	    holder.setInitParameter(FlashSocketTransport.FLASHPOLICY_PORTS_KEY, ""+ port);
 	    context.addServlet(holder, "/socket.io/*");
+	    context.addServlet(new ServletHolder(new StaticServlet()), "/gwtchat.html");
+	    ServletHolder defaultServlet = new ServletHolder(new DefaultServlet());
+	    context.addServlet(defaultServlet, "/com.glines.socketio.examples.gwtchat.GWTChat/*");
 
 	    server.setHandler(context);
 	    server.start();
