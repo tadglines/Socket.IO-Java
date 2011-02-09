@@ -368,6 +368,12 @@
                 <artifactId>socketio-gwt</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!-- servlet api -->
+            <dependency>
+                <groupId>org.mortbay.jetty</groupId>
+                <artifactId>servlet-api</artifactId>
+                <version>3.0.20100224</version>
+            </dependency>
             <!-- Jetty -->
             <dependency>
                 <groupId>org.testatoo.container</groupId>
@@ -386,6 +392,11 @@
                 <version>2.1.1</version>
             </dependency>
             <!-- utils -->
+            <dependency>
+                <groupId>com.google.code.gson</groupId>
+                <artifactId>gson</artifactId>
+                <version>1.4</version>
+            </dependency>
             <dependency>
                 <groupId>org.codehaus.jettison</groupId>
                 <artifactId>jettison</artifactId>

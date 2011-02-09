@@ -28,10 +28,13 @@ import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOOutbound;
 import com.glines.socketio.server.SocketIOServlet;
-import org.eclipse.jetty.util.ajax.JSON;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonSerializer;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
+import java.net.Socket;
 import java.util.Collections;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -51,12 +54,12 @@ public class ChatSocketServlet extends SocketIOServlet {
             this.outbound = outbound;
             connections.offer(this);
             try {
-                outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+                outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                         Collections.singletonMap("welcome", "Welcome to Socket.IO Chat!")));
             } catch (SocketIOException e) {
                 outbound.disconnect();
             }
-            broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+            broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                     Collections.singletonMap("announcement", sessionId + " connected")));
         }
 
@@ -64,7 +67,7 @@ public class ChatSocketServlet extends SocketIOServlet {
         public void onDisconnect(DisconnectReason reason, String errorMessage) {
             this.outbound = null;
             connections.remove(this);
-            broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+            broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                     Collections.singletonMap("announcement", sessionId + " disconnected")));
         }
 
@@ -86,7 +89,7 @@ public class ChatSocketServlet extends SocketIOServlet {
                     // Ignore
                 }
                 try {
-                    outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+                    outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                             Collections.singletonMap("message", "Slept for " + sleepTime + " seconds.")));
                 } catch (SocketIOException e) {
                     outbound.disconnect();
@@ -99,7 +102,7 @@ public class ChatSocketServlet extends SocketIOServlet {
                 }
                 try {
                     for (int i = 0; i < burstNum; i++) {
-                        outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+                        outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                                 Collections.singletonMap("message", new String[]{"Server", "Hi " + i +
                                         "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" +
                                         "0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF" +
@@ -123,7 +126,7 @@ public class ChatSocketServlet extends SocketIOServlet {
 //					outbound.disconnect();
                 }
             } else {
-                broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+                broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                         Collections.singletonMap("message",
                                 new String[]{sessionId.toString(), (String) message})));
             }

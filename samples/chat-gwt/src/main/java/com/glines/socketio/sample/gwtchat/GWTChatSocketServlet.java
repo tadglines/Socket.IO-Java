@@ -28,7 +28,7 @@ import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOOutbound;
 import com.glines.socketio.server.SocketIOServlet;
-import org.eclipse.jetty.util.ajax.JSON;
+import com.google.gson.Gson;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -51,12 +51,12 @@ public class GWTChatSocketServlet extends SocketIOServlet {
             this.outbound = outbound;
             connections.offer(this);
             try {
-                outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+                outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                         Collections.singletonMap("welcome", "Welcome to GWT Chat!")));
             } catch (SocketIOException e) {
                 outbound.disconnect();
             }
-            broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+            broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                     Collections.singletonMap("announcement", sessionId + " connected")));
         }
 
@@ -64,7 +64,7 @@ public class GWTChatSocketServlet extends SocketIOServlet {
         public void onDisconnect(DisconnectReason reason, String errorMessage) {
             this.outbound = null;
             connections.remove(this);
-            broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+            broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                     Collections.singletonMap("announcement", sessionId + " disconnected")));
         }
 
@@ -86,13 +86,13 @@ public class GWTChatSocketServlet extends SocketIOServlet {
                     // Ignore
                 }
                 try {
-                    outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+                    outbound.sendMessage(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                             Collections.singletonMap("message", "Slept for " + sleepTime + " seconds.")));
                 } catch (SocketIOException e) {
                     outbound.disconnect();
                 }
             } else {
-                broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, JSON.toString(
+                broadcast(SocketIOFrame.JSON_MESSAGE_TYPE, new Gson().toJson(
                         Collections.singletonMap("message",
                                 new String[]{sessionId.toString(), (String) message})));
             }
