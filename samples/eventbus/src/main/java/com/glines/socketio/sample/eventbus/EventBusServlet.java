@@ -30,8 +30,6 @@ import com.glines.socketio.server.SocketIOServlet;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
-import org.eclipse.jetty.util.log.JavaUtilLog;
-import org.eclipse.jetty.util.log.Log;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -45,7 +43,6 @@ public class EventBusServlet extends SocketIOServlet {
 
     static {
         try {
-            Log.setLog(new JavaUtilLog());
             LogManager.getLogManager().reset();
             LogManager.getLogManager().readConfiguration(Thread.currentThread().getContextClassLoader().getResourceAsStream("logging.properties"));
         } catch (IOException e) {
