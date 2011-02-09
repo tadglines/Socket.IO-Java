@@ -54,7 +54,7 @@ public abstract class AbstractHttpTransport extends AbstractTransport {
 	 */
 	public static long REQUEST_TIMEOUT = 20*1000;
 	
-	protected static final String SESSION_KEY = "com.glines.socketio.server.AbstractHttpTransport.Session";
+	protected static final String SESSION_KEY = AbstractHttpTransport.class.getName() +  ".Session";
 
 	public AbstractHttpTransport() {
 	}
