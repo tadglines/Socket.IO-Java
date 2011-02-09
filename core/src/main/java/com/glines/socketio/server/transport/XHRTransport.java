@@ -22,33 +22,30 @@
  */
 package com.glines.socketio.server.transport;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
+import com.glines.socketio.common.ConnectionState;
+import com.glines.socketio.common.DisconnectReason;
+import com.glines.socketio.common.SocketIOException;
+import com.glines.socketio.server.*;
+import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
 import org.eclipse.jetty.continuation.Continuation;
 import org.eclipse.jetty.continuation.ContinuationListener;
 import org.eclipse.jetty.continuation.ContinuationSupport;
 import org.eclipse.jetty.util.IO;
 import org.eclipse.jetty.util.URIUtil;
-import org.eclipse.jetty.util.log.Log;
 
-import com.glines.socketio.common.ConnectionState;
-import com.glines.socketio.common.DisconnectReason;
-import com.glines.socketio.common.SocketIOException;
-import com.glines.socketio.server.SocketIOClosedException;
-import com.glines.socketio.server.SocketIOInbound;
-import com.glines.socketio.server.SocketIOFrame;
-import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
-import com.glines.socketio.server.Transport;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public abstract class XHRTransport extends AbstractHttpTransport {
+
+    private static final Logger LOGGER = Logger.getLogger(XHRTransport.class.getName());
+
 	public static final String CONTINUATION_KEY =
 		"com.glines.socketio.server.transport.XHRTransport.Continuation";
 	private final int bufferSize;
@@ -101,11 +98,10 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		}
 
 		@Override
-		public void sendMessage(SocketIOFrame frame)
-				throws SocketIOException {
+		public void sendMessage(SocketIOFrame frame) throws SocketIOException {
 			synchronized (this) {
-				Log.debug("Session["+session.getSessionId()+"]: " +
-						"sendMessage(frame): [" + frame.getFrameType() + "]: " + frame.getData());
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: " + "sendMessage(frame): [" + frame.getFrameType() + "]: " + frame.getData());
 				if (is_open) {
 					if (continuation != null) {
 						List<String> messages = buffer.drainMessages();
@@ -142,8 +138,8 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 
 		@Override
 		public void sendMessage(String message) throws SocketIOException {
-			Log.debug("Session["+session.getSessionId()+"]: " +
-					"sendMessage(String): " + message);
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: " + "sendMessage(String): " + message);
 			sendMessage(SocketIOFrame.TEXT_MESSAGE_TYPE, message);
 		}
 
@@ -151,8 +147,8 @@ public abstract class XHRTransport extends AbstractHttpTransport {
 		public void sendMessage(int messageType, String message)
 				throws SocketIOException {
 			synchronized (this) {
-				Log.debug("Session["+session.getSessionId()+"]: " +
-						"sendMessage(int, String): [" + messageType + "]: " + message);
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: " + "sendMessage(int, String): [" + messageType + "]: " + message);
 				if (is_open && session.getConnectionState() == ConnectionState.CONNECTED) {
 					sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
 				} else {

@@ -22,23 +22,21 @@
  */
 package com.glines.socketio.server;
 
-import java.security.SecureRandom;
-import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-
-import org.eclipse.jetty.util.log.Log;
-
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
 
+import java.security.SecureRandom;
+import java.util.Random;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
 class SocketIOSessionManager implements SocketIOSession.Factory {
+
+    private static final Logger LOGGER = Logger.getLogger(SocketIOSessionManager.class.getName());
+
 	private static final char[] BASE64_ALPHABET =
 	      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 	      .toCharArray();
@@ -102,7 +100,8 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		}
 
 		private void onTimeout() {
-			Log.debug("Session["+sessionId+"]: onTimeout");
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.log(Level.FINE, "Session[" + sessionId + "]: onTimeout");
 			if (!timedout) {
 				timedout = true;
 				state = ConnectionState.CLOSED;
@@ -134,11 +133,13 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		
 		private void sendPing() {
 			String data = "" + messageId.incrementAndGet();
-			Log.debug("Session["+sessionId+"]: sendPing " + data);
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.log(Level.FINE, "Session[" + sessionId + "]: sendPing " + data);
 			try {
 				handler.sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.PING, 0, data));
 			} catch (SocketIOException e) {
-				Log.debug("handler.sendMessage failed: ", e);
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "handler.sendMessage failed: ", e);
 				handler.abort();
 			}
 			startTimeoutTimer();
@@ -192,7 +193,8 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 			try {
 				handler.sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.CLOSE, 0, closeId));
 			} catch (SocketIOException e) {
-				Log.debug("handler.sendMessage failed: ", e);
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "handler.sendMessage failed: ", e);
 				handler.abort();
 			}
 		}
@@ -205,19 +207,23 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 				// Ignore these two messages types as they are only intended to be from server to client.
 				break;
 			case CLOSE:
-				Log.debug("Session["+sessionId+"]: onClose: " + message.getData());
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "Session[" + sessionId + "]: onClose: " + message.getData());
 				onClose(message.getData());
 				break;
 			case PING:
-				Log.debug("Session["+sessionId+"]: onPing: " + message.getData());
+                if (LOGGER.isLoggable(Level.FINE))
+				    LOGGER.log(Level.FINE, "Session["+sessionId+"]: onPing: " + message.getData());
 				onPing(message.getData());
 				break;
 			case PONG:
-				Log.debug("Session["+sessionId+"]: onPong: " + message.getData());
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "Session[" + sessionId + "]: onPong: " + message.getData());
 				onPong(message.getData());
 				break;
 			case DATA:
-				Log.debug("Session["+sessionId+"]: onMessage: " + message.getData());
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "Session[" + sessionId + "]: onMessage: " + message.getData());
 				onMessage(message.getData());
 				break;
 			default:
@@ -231,7 +237,8 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 			try {
 				handler.sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.PONG, 0, data));
 			} catch (SocketIOException e) {
-				Log.debug("handler.sendMessage failed: ", e);
+                if (LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "handler.sendMessage failed: ", e);
 				handler.abort();
 			}
 		}
@@ -252,7 +259,8 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 					try {
 						handler.sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.CLOSE, 0, data));
 					} catch (SocketIOException e) {
-						Log.debug("handler.sendMessage failed: ", e);
+                        if(LOGGER.isLoggable(Level.FINE))
+						    LOGGER.log(Level.FINE, "handler.sendMessage failed: ", e);
 						handler.abort();
 					}
 				}
@@ -264,7 +272,8 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
                     if ("client".equals(data))
                         onDisconnect(DisconnectReason.CLOSED_REMOTELY);
 				} catch (SocketIOException e) {
-					Log.debug("handler.sendMessage failed: ", e);
+                    if(LOGGER.isLoggable(Level.FINE))
+					    LOGGER.log(Level.FINE, "handler.sendMessage failed: ", e);
 					handler.abort();
 				}
 			}
@@ -293,7 +302,8 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 					state = ConnectionState.CONNECTED;
 					inbound.onConnect(handler);
 				} catch (Throwable e) {
-					Log.warn("Session["+sessionId+"]: Exception thrown by SocketIOInbound.onConnect()", e);
+                    if (LOGGER.isLoggable(Level.WARNING))
+                        LOGGER.log(Level.WARNING, "Session[" + sessionId + "]: Exception thrown by SocketIOInbound.onConnect()", e);
 					state = ConnectionState.CLOSED;
 					handler.abort();
 				}
@@ -308,14 +318,16 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 				try {
 					inbound.onMessage(SocketIOFrame.TEXT_MESSAGE_TYPE, message);
 				} catch (Throwable e) {
-					Log.warn("Session["+sessionId+"]: Exception thrown by SocketIOInbound.onMessage()", e);
+                    if (LOGGER.isLoggable(Level.WARNING))
+                        LOGGER.log(Level.WARNING, "Session[" + sessionId + "]: Exception thrown by SocketIOInbound.onMessage()", e);
 				}
 			}
 		}
 
 		@Override
 		public void onDisconnect(DisconnectReason reason) {
-			Log.debug("Session["+sessionId+"]: onDisconnect: " + reason);
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.log(Level.FINE, "Session[" + sessionId + "]: onDisconnect: " + reason);
 			clearTimeoutTimer();
 			clearHeartbeatTimer();
 			if (inbound != null) {
@@ -323,7 +335,8 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 				try {
 					inbound.onDisconnect(reason, null);
 				} catch (Throwable e) {
-					Log.warn("Session["+sessionId+"]: Exception thrown by SocketIOInbound.onDisconnect()", e);
+                    if (LOGGER.isLoggable(Level.WARNING))
+                        LOGGER.log(Level.WARNING, "Session[" + sessionId + "]: Exception thrown by SocketIOInbound.onDisconnect()", e);
 				}
 				inbound = null;
 			}
@@ -331,7 +344,8 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 		
 		@Override
 		public void onShutdown() {
-			Log.debug("Session["+sessionId+"]: onShutdown");
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.log(Level.FINE, "Session[" + sessionId + "]: onShutdown");
 			if (inbound != null) {
 				if (state == ConnectionState.CLOSING) {
 					if (closeId != null) {

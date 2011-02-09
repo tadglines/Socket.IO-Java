@@ -22,27 +22,25 @@
  */
 package com.glines.socketio.server.transport;
 
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.util.List;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import org.eclipse.jetty.util.log.Log;
-import org.eclipse.jetty.websocket.WebSocket;
-import org.eclipse.jetty.websocket.WebSocketFactory;
-
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
-import com.glines.socketio.server.SocketIOClosedException;
-import com.glines.socketio.server.SocketIOInbound;
-import com.glines.socketio.server.SocketIOFrame;
-import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.Transport;
+import com.glines.socketio.server.*;
+import org.eclipse.jetty.websocket.WebSocket;
+import org.eclipse.jetty.websocket.WebSocketFactory;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class WebSocketTransport extends AbstractTransport {
+
+    private static final Logger LOGGER = Logger.getLogger(WebSocketTransport.class.getName());
+
 	public static final String TRANSPORT_NAME = "websocket";
 	public static final long CONNECTION_TIMEOUT = 10*1000;
 	private final WebSocketFactory wsFactory;
@@ -152,7 +150,8 @@ public class WebSocketTransport extends AbstractTransport {
 		@Override
 		public void sendMessage(SocketIOFrame frame) throws SocketIOException {
 			if (outbound.isOpen()) {
-				Log.debug("Session["+session.getSessionId()+"]: sendMessage: [" + frame.getFrameType() + "]: " + frame.getData());
+                if(LOGGER.isLoggable(Level.FINE))
+                    LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: sendMessage: [" + frame.getFrameType() + "]: " + frame.getData());
 				try {
 					outbound.sendMessage(frame.encode());
 				} catch (IOException e) {

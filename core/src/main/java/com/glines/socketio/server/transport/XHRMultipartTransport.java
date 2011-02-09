@@ -22,21 +22,22 @@
  */
 package com.glines.socketio.server.transport;
 
-import java.io.IOException;
-import java.util.Arrays;
+import com.glines.socketio.server.SocketIOFrame;
+import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.transport.ConnectionTimeoutPreventor.IdleCheck;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import org.eclipse.jetty.util.log.Log;
-
-import com.glines.socketio.server.SocketIOFrame;
-import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.transport.ConnectionTimeoutPreventor.IdleCheck;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class XHRMultipartTransport extends XHRTransport {
+
+    private static final Logger LOGGER = Logger.getLogger(XHRMultipartTransport.class.getName());
+
 	public static final String TRANSPORT_NAME = "xhr-multipart";
 	private static final int MULTIPART_BOUNDARY_LENGTH = 20;
 
@@ -64,18 +65,20 @@ public class XHRMultipartTransport extends XHRTransport {
 
 		protected void writeData(ServletResponse response, String data) throws IOException {
 			idleCheck.activity();
-			Log.debug("Session["+session.getSessionId()+"]: writeData(START): " + data);
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: writeData(START): " + data);
 			ServletOutputStream os = response.getOutputStream();
 			os.println("Content-Type: text/plain");
 			os.println();
 			os.println(data);
 			os.println(boundarySeperator);
 			response.flushBuffer();
-			Log.debug("Session["+session.getSessionId()+"]: writeData(END): " + data);
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: writeData(END): " + data);
 		}
 
 		protected void finishSend(ServletResponse response) throws IOException {
-		};
+		}
 
 		protected void customConnect(HttpServletRequest request,
 				HttpServletResponse response) throws IOException {
