@@ -1,0 +1,5 @@
+com.glines.socketio.server.transport.FlashSocketTransport
+com.glines.socketio.server.transport.HTMLFileTransport
+com.glines.socketio.server.transport.XHRMultipartTransport
+com.glines.socketio.server.transport.XHRPollingTransport
+com.glines.socketio.server.transport.JSONPPollingTransport

@@ -3,9 +3,7 @@ package com.glines.socketio.server.transport;
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
-import com.glines.socketio.server.SocketIOClosedException;
-import com.glines.socketio.server.SocketIOFrame;
-import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.*;
 import com.glines.socketio.util.IO;
 import com.glines.socketio.util.URI;
 import org.eclipse.jetty.continuation.Continuation;
@@ -24,24 +22,48 @@ import java.util.logging.Logger;
 /**
  * @author Mathieu Carbou
  */
-public abstract class JettyXHRSessionHelper implements SocketIOSession.SessionTransportHandler, ContinuationListener {
+abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler implements ContinuationListener {
 
-    private static final Logger LOGGER = Logger.getLogger(XHRTransport.class.getName());
+    private static final String CONTINUATION_KEY = XHRTransport.class.getName() + ".Continuation";
+    private static final Logger LOGGER = Logger.getLogger(JettyXHRSessionHelper.class.getName());
 
-    protected final SocketIOSession session;
-    private final TransportBuffer buffer;
-    private volatile boolean is_open = false;
-    private volatile Continuation continuation = null;
+    private final SocketIOSession session;
     private final boolean isConnectionPersistant;
-    private boolean disconnectWhenEmpty = false;
-    private final int bufferSize;
-    private final int maxIdleTime;
 
-    JettyXHRSessionHelper(SocketIOSession session, boolean isConnectionPersistant, int bufferSize, int maxIdleTime) {
+    private TransportBuffer buffer;
+    private volatile boolean is_open;
+    private volatile Continuation continuation;
+    private boolean disconnectWhenEmpty;
+    private int bufferSize;
+    private int maxIdleTime;
+
+    JettyXHRSessionHelper(SocketIOSession session, boolean isConnectionPersistant) {
         this.session = session;
         this.isConnectionPersistant = isConnectionPersistant;
+    }
+
+    protected abstract void startSend(HttpServletResponse response) throws IOException;
+
+    protected abstract void writeData(ServletResponse response, String data) throws IOException;
+
+    protected abstract void finishSend(ServletResponse response) throws IOException;
+
+    public final SocketIOSession getSession() {
+        return session;
+    }
+
+    public void setBufferSize(int bufferSize) {
         this.bufferSize = bufferSize;
+    }
+
+    public void setMaxIdleTime(int maxIdleTime) {
         this.maxIdleTime = maxIdleTime;
+    }
+
+    @Override
+    protected final void init() throws SessionTransportInitializationException {
+        setBufferSize(getConfig().getBufferSize());
+        setMaxIdleTime(getConfig().getMaxIdle());
         this.buffer = new TransportBuffer(bufferSize);
         if (isConnectionPersistant) {
             session.setHeartbeat(HttpTransport.HEARTBEAT_DELAY);
@@ -50,12 +72,6 @@ public abstract class JettyXHRSessionHelper implements SocketIOSession.SessionTr
             session.setTimeout((HttpTransport.HTTP_REQUEST_TIMEOUT - HttpTransport.REQUEST_TIMEOUT) / 2);
         }
     }
-
-    protected abstract void startSend(HttpServletResponse response) throws IOException;
-
-    protected abstract void writeData(ServletResponse response, String data) throws IOException;
-
-    protected abstract void finishSend(ServletResponse response) throws IOException;
 
     @Override
     public void disconnect() {
@@ -104,7 +120,7 @@ public abstract class JettyXHRSessionHelper implements SocketIOSession.SessionTr
                     }
                 } else {
                     String data = frame.encode();
-                    if (buffer.putMessage(data, maxIdleTime) == false) {
+                    if (!buffer.putMessage(data, maxIdleTime)) {
                         session.onDisconnect(DisconnectReason.TIMEOUT);
                         abort();
                         throw new SocketIOException();
@@ -148,14 +164,14 @@ public abstract class JettyXHRSessionHelper implements SocketIOSession.SessionTr
                 } else {
                     /*
                            */
-                    Continuation cont = (Continuation) request.getAttribute(XHRTransport.CONTINUATION_KEY);
+                    Continuation cont = (Continuation) request.getAttribute(CONTINUATION_KEY);
                     if (continuation != null || cont != null) {
                         if (continuation == cont) {
                             continuation = null;
                             finishSend(response);
                         }
                         if (cont != null) {
-                            request.removeAttribute(XHRTransport.CONTINUATION_KEY);
+                            request.removeAttribute(CONTINUATION_KEY);
                         }
                         return;
                     }
@@ -184,7 +200,7 @@ public abstract class JettyXHRSessionHelper implements SocketIOSession.SessionTr
                             continuation.addContinuationListener(this);
                             continuation.setTimeout(HttpTransport.REQUEST_TIMEOUT);
                             continuation.suspend(response);
-                            request.setAttribute(XHRTransport.CONTINUATION_KEY, continuation);
+                            request.setAttribute(CONTINUATION_KEY, continuation);
                             startSend(response);
                         }
                     } else {
@@ -309,7 +325,7 @@ public abstract class JettyXHRSessionHelper implements SocketIOSession.SessionTr
         finishSend(response);
         if (continuation != null) {
             if (isConnectionPersistant) {
-                request.setAttribute(XHRTransport.CONTINUATION_KEY, continuation);
+                request.setAttribute(CONTINUATION_KEY, continuation);
                 continuation.suspend(response);
             } else {
                 continuation = null;

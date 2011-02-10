@@ -32,31 +32,23 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
-public abstract class XHRTransport extends HttpTransport {
-
-    public static final String CONTINUATION_KEY = XHRTransport.class.getName() + ".Continuation";
-    private final int bufferSize;
-    private final int maxIdleTime;
-
-    public XHRTransport(int bufferSize, int maxIdleTime) {
-        this.bufferSize = bufferSize;
-        this.maxIdleTime = maxIdleTime;
-    }
+abstract class XHRTransport extends HttpTransport {
 
     /**
      * This method should only be called within the context of an active HTTP request.
      */
-    protected abstract JettyXHRSessionHelper createHelper(SocketIOSession session, int bufferSize, int maxIdleTime);
+    protected abstract JettyXHRSessionHelper createHelper(SocketIOSession session);
 
     @Override
-    protected SocketIOSession connect(HttpServletRequest request,
+    protected final SocketIOSession connect(HttpServletRequest request,
                                       HttpServletResponse response, Transport.InboundFactory inboundFactory,
                                       com.glines.socketio.server.SocketIOSession.Factory sessionFactory)
             throws IOException {
         SocketIOInbound inbound = inboundFactory.getInbound(request);
         if (inbound != null) {
             SocketIOSession session = sessionFactory.createSession(inbound);
-            JettyXHRSessionHelper handler = createHelper(session, bufferSize, maxIdleTime);
+            JettyXHRSessionHelper handler = createHelper(session);
+            handler.init(getServletConfig());
             handler.connect(request, response);
             return session;
         }

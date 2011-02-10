@@ -43,8 +43,8 @@ public class HTMLFileTransport extends XHRTransport {
 	private class HTMLFileSessionHelper extends JettyXHRSessionHelper {
 		private final IdleCheck idleCheck;
 
-		HTMLFileSessionHelper(SocketIOSession session, IdleCheck idleCheck, int bufferSize, int maxIdleTime) {
-			super(session, true, bufferSize, maxIdleTime);
+		HTMLFileSessionHelper(SocketIOSession session, IdleCheck idleCheck) {
+			super(session, true);
 			this.idleCheck = idleCheck;
 		}
 
@@ -70,13 +70,9 @@ public class HTMLFileTransport extends XHRTransport {
 		protected void customConnect(HttpServletRequest request,
 				HttpServletResponse response) throws IOException {
 			startSend(response);
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, session.getSessionId()));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, getSession().getSessionId()));
 			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + HEARTBEAT_DELAY));
 		}
-	}
-
-	public HTMLFileTransport(int bufferSize, int maxIdleTime) {
-		super(bufferSize, maxIdleTime);
 	}
 
 	@Override
@@ -84,8 +80,8 @@ public class HTMLFileTransport extends XHRTransport {
 		return TRANSPORT_NAME;
 	}
 
-	protected JettyXHRSessionHelper createHelper(SocketIOSession session, int bufferSize, int maxIdleTime) {
+	protected JettyXHRSessionHelper createHelper(SocketIOSession session) {
 		IdleCheck idleCheck = JettyConnectionTimeoutPreventor.newTimeoutPreventor();
-		return new HTMLFileSessionHelper(session, idleCheck, bufferSize, maxIdleTime);
+		return new HTMLFileSessionHelper(session, idleCheck);
 	}
 }

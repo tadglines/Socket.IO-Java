@@ -25,28 +25,39 @@
 package com.glines.socketio.server;
 
 import javax.servlet.ServletConfig;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
 
 /**
  * @author Mathieu Carbou
  */
-public class TransportAdapter implements Transport {
+public abstract class AbstractTransport implements Transport {
+
+    private ServletConfig servletConfig;
+    private SocketIOConfig config;
+
     @Override
     public void destroy() {
     }
 
     @Override
-    public String getName() {
-        return null;
+    public final void init(ServletConfig config) throws TransportInitializationException {
+        this.servletConfig = config;
+        this.config = new ServletBasedSocketIOConfig(servletConfig);
+        init();
+    }
+
+    protected final ServletConfig getServletConfig() {
+        return servletConfig;
+    }
+
+    protected final SocketIOConfig getConfig() {
+        return config;
+    }
+
+    protected void init() throws TransportInitializationException {
     }
 
     @Override
-    public void init(ServletConfig config) {
-    }
-
-    @Override
-    public void handle(HttpServletRequest request, HttpServletResponse response, InboundFactory inboundFactory, SocketIOSession.Factory sessionFactory) throws IOException {
+    public String toString() {
+        return getName();
     }
 }

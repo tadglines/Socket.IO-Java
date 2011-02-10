@@ -36,11 +36,11 @@ public interface Transport {
     }
 
     /**
-     * @return The name of the transport instance.
+     * @return The names of the transport instance.
      */
     String getName();
 
-    void init(ServletConfig config);
+    void init(ServletConfig config) throws TransportInitializationException;
 
     void destroy();
 

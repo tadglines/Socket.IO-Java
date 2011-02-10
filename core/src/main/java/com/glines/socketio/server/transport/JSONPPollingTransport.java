@@ -39,8 +39,8 @@ public class JSONPPollingTransport extends XHRTransport {
 
 	protected class XHRPollingSessionHelper extends JettyXHRSessionHelper {
 
-		XHRPollingSessionHelper(SocketIOSession session, int bufferSize, int maxIdleTime) {
-			super(session, false, bufferSize, maxIdleTime);
+		XHRPollingSessionHelper(SocketIOSession session) {
+			super(session, false);
 		}
 
 		protected void startSend(HttpServletResponse response) throws IOException {
@@ -67,22 +67,18 @@ public class JSONPPollingTransport extends XHRTransport {
 	    		jsonpIndex = Integer.parseInt(parts[3]);
 	    	}
 			startSend(response);
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, session.getSessionId()));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, getSession().getSessionId()));
 			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + REQUEST_TIMEOUT));
 		}
 	}
 	
-	public JSONPPollingTransport(int bufferSize, int maxIdleTime) {
-		super(bufferSize, maxIdleTime);
-	}
-
 	@Override
 	public String getName() {
 		return TRANSPORT_NAME;
 	}
 	
 
-	protected XHRPollingSessionHelper createHelper(SocketIOSession session, int bufferSize, int maxIdleTime) {
-		return new XHRPollingSessionHelper(session, bufferSize, maxIdleTime);
+	protected XHRPollingSessionHelper createHelper(SocketIOSession session) {
+		return new XHRPollingSessionHelper(session);
 	}
 }

@@ -24,11 +24,15 @@
  */
 package com.glines.socketio.server.transport;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
+import com.glines.socketio.server.AbstractTransport;
+import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.Transport;
+import com.glines.socketio.server.TransportInitializationException;
+import com.glines.socketio.util.IO;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.channels.ClosedChannelException;
@@ -38,177 +42,188 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import javax.servlet.ServletConfig;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+public class FlashSocketTransport extends AbstractTransport {
 
-import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.Transport;
-import com.glines.socketio.util.IO;
+    private static final String TRANSPORT_NAME = "flashsocket";
+    private static final Logger LOGGER = Logger.getLogger(FlashSocketTransport.class.getName());
+    private static final String FLASHFILE_NAME = "WebSocketMain.swf";
+    private static final String FLASHFILE_PATH = TRANSPORT_NAME + "/" + FLASHFILE_NAME;
 
-public class FlashSocketTransport extends JettyWebSocketTransport {
-	public static final String TRANSPORT_NAME = "flashsocket";
-	public static final String FLASHPOLICY_SERVER_HOST_KEY = "flashPolicyServerHost";
-	public static final String FLASHPOLICY_SERVER_PORT_KEY = "flashPolicyServerPort";
-	public static final String FLASHPOLICY_DOMAIN_KEY = "flashPolicyDomain";
-	public static final String FLASHPOLICY_PORTS_KEY = "flashPolicyPorts";
+    private ServerSocketChannel flashPolicyServer;
+    private ExecutorService executor = Executors.newCachedThreadPool();
+    private Future<?> policyAcceptorThread;
 
-	private static final String FLASHFILE_NAME = "WebSocketMain.swf";
-	private static final String FLASHFILE_PATH = TRANSPORT_NAME + "/" + FLASHFILE_NAME;
-	private ServerSocketChannel flashPolicyServer = null;
-	private ExecutorService executor = Executors.newCachedThreadPool();
-	private Future<?> policyAcceptorThread = null;
-	private String flashPolicyServerHost = null;
-	private short flashPolicyServerPort = 843;
-	private String flashPolicyDomain = null;
-	private String flashPolicyPorts = null;
+    private int flashPolicyServerPort;
+    private String flashPolicyServerHost;
+    private String flashPolicyDomain;
+    private String flashPolicyPorts;
 
+    private Transport delegate;
 
-	public FlashSocketTransport(int bufferSize, int maxIdleTime) {
-		super(bufferSize, maxIdleTime);
-	}
+    @Override
+    public String getName() {
+        return TRANSPORT_NAME;
+    }
 
-	@Override
-	public String getName() {
-		return TRANSPORT_NAME;
-	}
+    @Override
+    public void init() throws TransportInitializationException {
+        setFlashPolicyDomain(getConfig().getFlashPolicyDomain());
+        setFlashPolicyPorts(getConfig().getFlashPolicyPorts());
+        setFlashPolicyServerHost(getConfig().getFlashPolicyServerHost());
+        setFlashPolicyServerPort(getConfig().getFlashPolicyServerPort());
 
-	@Override
-	public void init(ServletConfig config) {
-		flashPolicyServerHost = config.getInitParameter(FLASHPOLICY_SERVER_HOST_KEY);
-		flashPolicyDomain = config.getInitParameter(FLASHPOLICY_DOMAIN_KEY);
-		flashPolicyPorts = config.getInitParameter(FLASHPOLICY_PORTS_KEY);
-		String port = config.getInitParameter(FLASHPOLICY_SERVER_PORT_KEY);
-		if (port != null) {
-			flashPolicyServerPort = Short.parseShort(port);
-		}
-		if (flashPolicyServerHost != null && flashPolicyDomain != null && flashPolicyPorts != null) {
-			try {
-				startFlashPolicyServer();
-			} catch (IOException e) {
-				// Ignore
-			}
-		}
-	}
+        setDelegate(getConfig().getWebSocketTransport());
+        if (delegate == null)
+            throw new TransportInitializationException("No WebSocket transport available for this transport: " + getClass().getName());
 
-	@Override
-	public void destroy() {
-		stopFlashPolicyServer();
-	}
+        if (flashPolicyServerHost != null && flashPolicyDomain != null && flashPolicyPorts != null) {
+            try {
+                startFlashPolicyServer();
+            } catch (IOException e) {
+                // Ignore
+            }
+        }
+    }
 
-	@Override
-	public void handle(HttpServletRequest request,
-			HttpServletResponse response,
-			Transport.InboundFactory inboundFactory,
-			SocketIOSession.Factory sessionFactory)
-			throws IOException {
+    @Override
+    public void destroy() {
+        stopFlashPolicyServer();
+    }
 
-		String path = request.getPathInfo();
-    	if (path == null || path.length() == 0 || "/".equals(path)) {
-    		response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid " + TRANSPORT_NAME + " transport request");
-    		return;
-    	}
-    	if (path.startsWith("/")) path = path.substring(1);
-    	String[] parts = path.split("/");
+    @Override
+    public void handle(HttpServletRequest request,
+                       HttpServletResponse response,
+                       Transport.InboundFactory inboundFactory,
+                       SocketIOSession.Factory sessionFactory) throws IOException {
+        
+        String path = request.getPathInfo();
+        if (path == null || path.length() == 0 || "/".equals(path)) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid " + TRANSPORT_NAME + " transport request");
+            return;
+        }
+        if (path.startsWith("/")) path = path.substring(1);
+        String[] parts = path.split("/");
+        if ("GET".equals(request.getMethod()) && TRANSPORT_NAME.equals(parts[0])) {
+            if (!FLASHFILE_PATH.equals(path)) {
+                delegate.handle(request, response, inboundFactory, sessionFactory);
+            } else {
+                response.setContentType("application/x-shockwave-flash");
+                InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/" + FLASHFILE_NAME);
+                OutputStream os = response.getOutputStream();
+                try {
+                    IO.copy(is, os);
+                } catch (IOException e) {
+                    LOGGER.log(Level.FINE, "Error writing " + FLASHFILE_NAME + ": " + e.getMessage(), e);
+                }
+            }
+        } else {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid " + TRANSPORT_NAME + " transport request");
+        }
+    }
 
-    	if ("GET".equals(request.getMethod()) && TRANSPORT_NAME.equals(parts[0])) {
-    		if (!FLASHFILE_PATH.equals(path)) {
-        		super.handle(request, response, inboundFactory, sessionFactory);
-    		} else {
-				response.setContentType("application/x-shockwave-flash");
-				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/" + FLASHFILE_NAME);
-				OutputStream os = response.getOutputStream();
-				try {
-					IO.copy(is, os);
-				} catch (IOException e) {
-					// TODO: Do we care?
-				}
-    		}
-    	} else {
-    		response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid " + TRANSPORT_NAME + " transport request");
-    	}
-	}
-	
-	/**
-	 * Starts this server, binding to the previously passed SocketAddress.
-	 */
-	public void startFlashPolicyServer() throws IOException {
-		final String POLICY_FILE_REQUEST = "<policy-file-request/>";
-		flashPolicyServer = ServerSocketChannel.open();
-		flashPolicyServer.socket().setReuseAddress(true);
-		flashPolicyServer.socket().bind(new InetSocketAddress(flashPolicyServerHost, flashPolicyServerPort));
-		flashPolicyServer.configureBlocking(true);
+    /**
+     * Starts this server, binding to the previously passed SocketAddress.
+     */
+    public void startFlashPolicyServer() throws IOException {
+        final String POLICY_FILE_REQUEST = "<policy-file-request/>";
+        flashPolicyServer = ServerSocketChannel.open();
+        flashPolicyServer.socket().setReuseAddress(true);
+        flashPolicyServer.socket().bind(new InetSocketAddress(flashPolicyServerHost, flashPolicyServerPort));
+        flashPolicyServer.configureBlocking(true);
 
-		// Spawn a new server acceptor thread, which must accept incoming
-		// connections indefinitely - until a ClosedChannelException is thrown.
-		policyAcceptorThread = executor.submit(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					while (true) {
-						final SocketChannel serverSocket = flashPolicyServer.accept();
-						executor.submit(new Runnable() {
-							@Override
-							public void run() {
-								try {
-									serverSocket.configureBlocking(true);
-									Socket s = serverSocket.socket();
-									StringBuilder request = new StringBuilder();
-									InputStreamReader in = new InputStreamReader(s.getInputStream());
-									int c;
-									while ((c = in.read()) != 0 && request.length() <= POLICY_FILE_REQUEST.length()) {
-										request.append((char)c);
-									}
-									if (request.toString().equalsIgnoreCase(POLICY_FILE_REQUEST) ||
-										flashPolicyDomain != null && flashPolicyPorts != null) {
-										PrintWriter out = new PrintWriter(s.getOutputStream());
-										out.println("<cross-domain-policy><allow-access-from domain=\""+flashPolicyDomain+"\" to-ports=\""+flashPolicyPorts+"\" /></cross-domain-policy>");
-										out.write(0);
-										out.flush();
-									}
-									serverSocket.close();
-								} catch (IOException e) {
-									// TODO: Add loging
-								} finally {
-									try {
-										serverSocket.close();
-									} catch (IOException e) {
-										// Ignore error on close.
-									}
-								}
-							}
-						});
-					}
-				} catch (ClosedChannelException e) {
-					return;
-				} catch (IOException e) {
-					throw new IllegalStateException("Server should not throw a misunderstood IOException", e);
-				}
-			}
-		});
-	}
+        // Spawn a new server acceptor thread, which must accept incoming
+        // connections indefinitely - until a ClosedChannelException is thrown.
+        policyAcceptorThread = executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    while (!Thread.currentThread().isInterrupted()) {
+                        final SocketChannel serverSocket = flashPolicyServer.accept();
+                        executor.submit(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    serverSocket.configureBlocking(true);
+                                    Socket s = serverSocket.socket();
+                                    StringBuilder request = new StringBuilder();
+                                    InputStreamReader in = new InputStreamReader(s.getInputStream());
+                                    int c;
+                                    while ((c = in.read()) != 0 && request.length() <= POLICY_FILE_REQUEST.length()) {
+                                        request.append((char) c);
+                                    }
+                                    if (request.toString().equalsIgnoreCase(POLICY_FILE_REQUEST) ||
+                                            flashPolicyDomain != null && flashPolicyPorts != null) {
+                                        PrintWriter out = new PrintWriter(s.getOutputStream());
+                                        out.println("<cross-domain-policy><allow-access-from domain=\"" + flashPolicyDomain + "\" to-ports=\"" + flashPolicyPorts + "\" /></cross-domain-policy>");
+                                        out.write(0);
+                                        out.flush();
+                                    }
+                                    serverSocket.close();
+                                } catch (IOException e) {
+                                    LOGGER.log(Level.FINE, "startFlashPolicyServer: " + e.getMessage(), e);
+                                } finally {
+                                    try {
+                                        serverSocket.close();
+                                    } catch (IOException e) {
+                                        // Ignore error on close.
+                                    }
+                                }
+                            }
+                        });
+                    }
+                } catch (ClosedChannelException e) {
+                    Thread.currentThread().interrupt();
+                } catch (IOException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Server should not throw a misunderstood IOException", e);
+                }
+            }
+        });
+    }
 
-	private void stopFlashPolicyServer() {
-		if (flashPolicyServer != null) {
-			try {
-				flashPolicyServer.close();
-			} catch (IOException e) {
-				// Ignore
-			}
-		}
-		if (policyAcceptorThread != null) {
-			try {
-				policyAcceptorThread.get();
-			} catch (InterruptedException e) {
-				throw new IllegalStateException();
-			} catch (ExecutionException e) {
-				throw new IllegalStateException("Server thread threw an exception", e.getCause());
-			}
-			if (!policyAcceptorThread.isDone()) {
-				throw new IllegalStateException("Server acceptor thread has not stopped.");
-			}
-		}
-	}
+    private void stopFlashPolicyServer() {
+        if (flashPolicyServer != null) {
+            try {
+                flashPolicyServer.close();
+            } catch (IOException e) {
+                // Ignore
+            }
+        }
+        if (policyAcceptorThread != null) {
+            try {
+                policyAcceptorThread.get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException();
+            } catch (ExecutionException e) {
+                throw new IllegalStateException("Server thread threw an exception", e.getCause());
+            }
+            if (!policyAcceptorThread.isDone()) {
+                throw new IllegalStateException("Server acceptor thread has not stopped.");
+            }
+        }
+    }
 
+    public void setDelegate(Transport delegate) {
+        this.delegate = delegate;
+    }
+
+    public void setFlashPolicyDomain(String flashPolicyDomain) {
+        this.flashPolicyDomain = flashPolicyDomain;
+    }
+
+    public void setFlashPolicyPorts(String flashPolicyPorts) {
+        this.flashPolicyPorts = flashPolicyPorts;
+    }
+
+    public void setFlashPolicyServerHost(String flashPolicyServerHost) {
+        this.flashPolicyServerHost = flashPolicyServerHost;
+    }
+
+    public void setFlashPolicyServerPort(int flashPolicyServerPort) {
+        this.flashPolicyServerPort = flashPolicyServerPort;
+    }
 }

@@ -29,13 +29,13 @@ import java.io.IOException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.glines.socketio.server.AbstractTransport;
+import com.glines.socketio.server.SessionTransportHandler;
 import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
 import com.glines.socketio.server.Transport;
-import com.glines.socketio.server.TransportAdapter;
 import com.glines.socketio.util.Web;
 
-public abstract class HttpTransport extends TransportAdapter {
+abstract class HttpTransport extends AbstractTransport {
 	/**
 	 * This is a sane default based on the timeout values of various browsers.
 	 */

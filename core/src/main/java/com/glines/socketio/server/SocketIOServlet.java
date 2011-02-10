@@ -24,7 +24,6 @@
  */
 package com.glines.socketio.server;
 
-import com.glines.socketio.server.transport.*;
 import com.glines.socketio.util.IO;
 
 import javax.servlet.ServletException;
@@ -34,102 +33,94 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-/**
- */
 public abstract class SocketIOServlet extends HttpServlet {
-	public static final String BUFFER_SIZE_INIT_PARAM = "bufferSize";
-	public static final String MAX_IDLE_TIME_INIT_PARAM = "maxIdleTime";
-	public static final int BUFFER_SIZE_DEFAULT = 8192;
-	public static final int MAX_IDLE_TIME_DEFAULT = 300*1000;
-	private static final long serialVersionUID = 1L;
-	private SocketIOSessionManager sessionManager = null;
-	private Map<String, Transport> transports = new HashMap<String, Transport>();
 
-	@Override
-	public void init() throws ServletException {
-		super.init();
-		String str = this.getInitParameter(BUFFER_SIZE_INIT_PARAM);
-		int bufferSize = str==null ? BUFFER_SIZE_DEFAULT : Integer.parseInt(str);
-		str = this.getInitParameter(MAX_IDLE_TIME_INIT_PARAM);
-		int maxIdleTime = str==null ? MAX_IDLE_TIME_DEFAULT : Integer.parseInt(str);
+    private static final Logger LOGGER = Logger.getLogger(SocketIOServlet.class.getName());
+    private static final long serialVersionUID = 2L;
 
-		sessionManager = new SocketIOSessionManager();
-		JettyWebSocketTransport websocketTransport = new JettyWebSocketTransport(bufferSize, maxIdleTime);
-		FlashSocketTransport flashsocketTransport = new FlashSocketTransport(bufferSize, maxIdleTime);
-		HTMLFileTransport htmlFileTransport = new HTMLFileTransport(bufferSize, maxIdleTime);
-		XHRMultipartTransport xhrMultipartTransport = new XHRMultipartTransport(bufferSize, maxIdleTime);
-		XHRPollingTransport xhrPollingTransport = new XHRPollingTransport(bufferSize, maxIdleTime);
-		JSONPPollingTransport jsonpPollingTransport = new JSONPPollingTransport(bufferSize, maxIdleTime);
-		transports.put(websocketTransport.getName(), websocketTransport);
-		transports.put(flashsocketTransport.getName(), flashsocketTransport);
-		transports.put(htmlFileTransport.getName(), htmlFileTransport);
-		transports.put(xhrMultipartTransport.getName(), xhrMultipartTransport);
-		transports.put(xhrPollingTransport.getName(), xhrPollingTransport);
-		transports.put(jsonpPollingTransport.getName(), jsonpPollingTransport);
-		
-		for (Transport t: transports.values()) {
-			t.init(this.getServletConfig());
-		}
-	}
+    //private final Map<String, Transport> transports = new ConcurrentHashMap<String, Transport>();
+    //transports.put(transport.getName(), transport);
+    private final SocketIOSessionManager sessionManager = new SocketIOSessionManager();
+    private SocketIOConfig config;
 
     @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        serve(req, resp);
-    }
-
-	@Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        serve(req, resp);
-	}
-
-    private void serve(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
-    	String path = request.getPathInfo();
-    	if (path == null || path.length() == 0 || "/".equals(path)) {
-    		response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing SocketIO transport");
-    		return;
-    	}
-    	if (path.startsWith("/")) path = path.substring(1);
-    	String[] parts = path.split("/");
-
-    	Transport transport = transports.get(parts[0]);
-    	if (transport == null) {
-    		if ("GET".equals(request.getMethod()) && "socket.io.js".equals(parts[0])) {
-				response.setContentType("text/javascript");
-				InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/socket.io.js");
-				OutputStream os = response.getOutputStream();
-                IO.copy(is, os);
-				return;
-    		} else {
-	    		response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown SocketIO transport");
-	    		return;
-    		}
-    	}
-
-  		transport.handle(request, response, new Transport.InboundFactory() {
-
-			@Override
-			public SocketIOInbound getInbound(HttpServletRequest request) {
-				return SocketIOServlet.this.doSocketIOConnect(request);
-			}
-  			
-  		}, sessionManager);
+    public final void init() throws ServletException {
+        config = new ServletBasedSocketIOConfig(getServletConfig());
+        // lazily load available transports
+        TransportDiscovery transportDiscovery = new ClasspathTransportDiscovery();
+        for (Transport transport : transportDiscovery.discover()) {
+            config.addTransport(transport);
+        }
+        // initialize them
+        for (Transport t : config.getTransports()) {
+            try {
+                t.init(getServletConfig());
+            } catch (TransportInitializationException e) {
+                config.removeTransport(t.getName());
+                LOGGER.log(Level.WARNING, "Transport " + t.getName() + " disabled. Initialization failed: " + e.getMessage());
+            }
+        }
+        if (LOGGER.isLoggable(Level.INFO))
+            LOGGER.log(Level.INFO, "Transports found: " + config.getTransports());
     }
 
     @Override
-    public void destroy() {
-    	for (Transport t: transports.values()) {
-    		t.destroy();
-    	}
-    	super.destroy();
+    public final void destroy() {
+        for (Transport t : config.getTransports()) {
+            t.destroy();
+        }
+        super.destroy();
+    }
+
+    @Override
+    protected final void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        serve(req, resp);
+    }
+
+    @Override
+    protected final void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        serve(req, resp);
     }
 
     /**
      * Returns an instance of SocketIOInbound or null if the connection is to be denied.
      * The value of cookies and protocols may be null.
      */
-	protected abstract SocketIOInbound doSocketIOConnect(HttpServletRequest request);
+    protected abstract SocketIOInbound doSocketIOConnect(HttpServletRequest request);
+
+    private void serve(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+
+        String path = request.getPathInfo();
+        if (path == null || path.length() == 0 || "/".equals(path)) {
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Missing SocketIO transport");
+            return;
+        }
+        if (path.startsWith("/")) path = path.substring(1);
+        String[] parts = path.split("/");
+
+        Transport transport = config.getTransport(parts[0]);
+        if (transport == null) {
+            if ("GET".equals(request.getMethod()) && "socket.io.js".equals(parts[0])) {
+                response.setContentType("text/javascript");
+                InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/socket.io.js");
+                OutputStream os = response.getOutputStream();
+                IO.copy(is, os);
+                return;
+            } else {
+                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown SocketIO transport: " + parts[0]);
+                return;
+            }
+        }
+
+        transport.handle(request, response, new Transport.InboundFactory() {
+            @Override
+            public SocketIOInbound getInbound(HttpServletRequest request) {
+                return SocketIOServlet.this.doSocketIOConnect(request);
+            }
+        }, sessionManager);
+    }
+
 }

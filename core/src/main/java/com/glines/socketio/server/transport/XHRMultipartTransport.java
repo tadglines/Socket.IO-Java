@@ -49,8 +49,8 @@ public class XHRMultipartTransport extends XHRTransport {
 		private final String boundarySeperator;
 		private final IdleCheck idleCheck;
 		
-		XHRMultipartSessionHelper(SocketIOSession session, IdleCheck idleCheck, int bufferSize, int maxIdleTime) {
-			super(session, true, bufferSize, maxIdleTime);
+		XHRMultipartSessionHelper(SocketIOSession session, IdleCheck idleCheck) {
+			super(session, true);
 			boundary = session.generateRandomString(MULTIPART_BOUNDARY_LENGTH);
 			boundarySeperator = "--" + boundary;
 			contentType = "multipart/x-mixed-replace;boundary=\""+boundary+"\"";
@@ -68,7 +68,7 @@ public class XHRMultipartTransport extends XHRTransport {
 		protected void writeData(ServletResponse response, String data) throws IOException {
 			idleCheck.activity();
             if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: writeData(START): " + data);
+                LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: writeData(START): " + data);
 			ServletOutputStream os = response.getOutputStream();
 			os.println("Content-Type: text/plain");
 			os.println();
@@ -76,7 +76,7 @@ public class XHRMultipartTransport extends XHRTransport {
 			os.println(boundarySeperator);
 			response.flushBuffer();
             if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: writeData(END): " + data);
+                LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: writeData(END): " + data);
 		}
 
 		protected void finishSend(ServletResponse response) throws IOException {
@@ -85,13 +85,9 @@ public class XHRMultipartTransport extends XHRTransport {
 		protected void customConnect(HttpServletRequest request,
 				HttpServletResponse response) throws IOException {
 			startSend(response);
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, session.getSessionId()));
+			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, getSession().getSessionId()));
 			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + HEARTBEAT_DELAY));
 		}
-	}
-
-	public XHRMultipartTransport(int bufferSize, int maxIdleTime) {
-		super(bufferSize, maxIdleTime);
 	}
 
 	@Override
@@ -99,8 +95,8 @@ public class XHRMultipartTransport extends XHRTransport {
 		return TRANSPORT_NAME;
 	}
 
-	protected JettyXHRSessionHelper createHelper(SocketIOSession session, int bufferSize, int maxIdleTime) {
+	protected JettyXHRSessionHelper createHelper(SocketIOSession session) {
 		IdleCheck idleCheck = JettyConnectionTimeoutPreventor.newTimeoutPreventor();
-		return new XHRMultipartSessionHelper(session, idleCheck, bufferSize, maxIdleTime);
+		return new XHRMultipartSessionHelper(session, idleCheck);
 	}
 }
