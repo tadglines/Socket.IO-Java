@@ -183,15 +183,9 @@ public class WebSocketTransport extends AbstractTransport {
 			}
 		}
 
-		/*
-		 * (non-Javadoc)
-		 * @see com.glines.socketio.SocketIOSession.SessionTransportHandler#handle(javax.servlet.http.HttpServletRequest, javax.servlet.http.HttpServletResponse, com.glines.socketio.SocketIOSession)
-		 */
 		@Override
-		public void handle(HttpServletRequest request,
-				HttpServletResponse response, SocketIOSession session) throws IOException {
+		public void handle(HttpServletRequest request, HttpServletResponse response, SocketIOSession session) throws IOException {
     		response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unexpected request on upgraded WebSocket connection");
-    		return;
 		}
 
 		@Override
