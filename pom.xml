@@ -382,6 +382,16 @@
                 <version>8.0.0.M2</version>
             </dependency>
             <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-continuation</artifactId>
+                <version>8.0.0.M2</version>
+            </dependency>
+            <dependency>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-websocket</artifactId>
+                <version>8.0.0.M2</version>
+            </dependency>
+            <dependency>
                 <groupId>org.testatoo.container</groupId>
                 <artifactId>testatoo-container-jetty</artifactId>
                 <version>1.0-rc1</version>
