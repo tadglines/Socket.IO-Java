@@ -54,6 +54,10 @@
         </dependency>
         <dependency>
             <groupId>com.glines.socketio.extension</groupId>
+            <artifactId>socketio-jetty</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.glines.socketio.extension</groupId>
             <artifactId>socketio-gwt</artifactId>
         </dependency>
         <dependency>

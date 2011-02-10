@@ -32,6 +32,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import com.glines.socketio.sample.gwtchat.GWTChatSocketServlet;
+import com.glines.socketio.server.SocketIOConfig;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.servlet.DefaultServlet;
@@ -94,9 +95,9 @@ public class GWTChatServer {
 	    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
 	    context.setResourceBase(war_dir);
 	    ServletHolder holder = new ServletHolder(new GWTChatSocketServlet());
-	    holder.setInitParameter(FlashSocketTransport.FLASHPOLICY_SERVER_HOST_KEY, host);
-	    holder.setInitParameter(FlashSocketTransport.FLASHPOLICY_DOMAIN_KEY, host);
-	    holder.setInitParameter(FlashSocketTransport.FLASHPOLICY_PORTS_KEY, ""+ port);
+	    holder.setInitParameter(SocketIOConfig.PARAM_FLASHPOLICY_SERVER_HOST, host);
+	    holder.setInitParameter(SocketIOConfig.PARAM_FLASHPOLICY_DOMAIN, host);
+	    holder.setInitParameter(SocketIOConfig.PARAM_FLASHPOLICY_PORTS, ""+ port);
 	    context.addServlet(holder, "/socket.io/*");
 	    context.addServlet(new ServletHolder(new StaticServlet()), "/gwtchat.html");
 	    ServletHolder defaultServlet = new ServletHolder(new DefaultServlet());

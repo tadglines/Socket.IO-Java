@@ -22,6 +22,10 @@
             <groupId>com.glines.socketio</groupId>
             <artifactId>socketio-core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.glines.socketio.extension</groupId>
+            <artifactId>socketio-jetty</artifactId>
+        </dependency>
         
         <dependency>
             <groupId>org.mortbay.jetty</groupId>
