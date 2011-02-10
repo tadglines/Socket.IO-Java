@@ -28,7 +28,7 @@ import com.glines.socketio.common.SocketIOException;
 import com.glines.socketio.server.*;
 import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
 import com.glines.socketio.util.IO;
-import com.glines.socketio.util.URIUtil;
+import com.glines.socketio.util.URI;
 import org.eclipse.jetty.continuation.Continuation;
 import org.eclipse.jetty.continuation.ContinuationListener;
 import org.eclipse.jetty.continuation.ContinuationSupport;
@@ -50,8 +50,8 @@ public abstract class XHRTransport extends AbstractHttpTransport {
     private final int bufferSize;
     private final int maxIdleTime;
 
-    protected abstract class XHRSessionHelper
-            implements SessionTransportHandler, ContinuationListener {
+    protected abstract class XHRSessionHelper implements SessionTransportHandler, ContinuationListener {
+        
         protected final SocketIOSession session;
         private final TransportBuffer buffer = new TransportBuffer(bufferSize);
         private volatile boolean is_open = false;
@@ -248,7 +248,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
         protected String decodePostData(String contentType, String data) {
             if (contentType.startsWith("application/x-www-form-urlencoded")) {
                 if (data.substring(0, 5).equals("data=")) {
-                    return URIUtil.decodePath(data.substring(5));
+                    return URI.decodePath(data.substring(5));
                 } else {
                     return "";
                 }
