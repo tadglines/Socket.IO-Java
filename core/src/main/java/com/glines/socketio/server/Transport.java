@@ -24,26 +24,28 @@
  */
 package com.glines.socketio.server;
 
-import java.io.IOException;
-
 import javax.servlet.ServletConfig;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 
 public interface Transport {
-	interface InboundFactory {
-		SocketIOInbound getInbound(HttpServletRequest request);
-	}
+    
+    interface InboundFactory {
+        SocketIOInbound getInbound(HttpServletRequest request);
+    }
 
-	/**
-	 * @return The name of the transport instance.
-	 */
-	String getName();
+    /**
+     * @return The name of the transport instance.
+     */
+    String getName();
 
-	void init(ServletConfig config);
-	
-	void destroy();
+    void init(ServletConfig config);
 
-	void handle(HttpServletRequest request, HttpServletResponse response,
-			Transport.InboundFactory inboundFactory, SocketIOSession.Factory sessionFactory) throws IOException;
+    void destroy();
+
+    void handle(HttpServletRequest request,
+                HttpServletResponse response,
+                Transport.InboundFactory inboundFactory,
+                SocketIOSession.Factory sessionFactory) throws IOException;
 }
