@@ -52,24 +52,24 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 	    StringBuilder result = new StringBuilder(length);
 	    byte[] bytes = new byte[length];
 	    random.nextBytes(bytes);
-	    for (int i = 0; i < bytes.length; i++) {
-	      result.append(BASE64_ALPHABET[bytes[i] & 0x3F]);
-	    }
+        for (byte aByte : bytes) {
+            result.append(BASE64_ALPHABET[aByte & 0x3F]);
+        }
 	    return result.toString();
 	}
 
 	private class SessionImpl implements SocketIOSession {
 		private final String sessionId;
 		private SocketIOInbound inbound;
-		private SessionTransportHandler handler = null;
+		private SessionTransportHandler handler;
 		private ConnectionState state = ConnectionState.CONNECTING;
-		private long hbDelay = 0;
-		private SessionTask hbDelayTask = null;
-		private long timeout = 0;
-		private SessionTask timeoutTask = null;
-		private boolean timedout = false;
+		private long hbDelay;
+		private SessionTask hbDelayTask;
+		private long timeout;
+		private SessionTask timeoutTask;
+		private boolean timedout;
 		private AtomicLong messageId = new AtomicLong(0);
-		private String closeId = null;
+		private String closeId;
 
 		SessionImpl(String sessionId, SocketIOInbound inbound) {
 			this.sessionId = sessionId;
@@ -300,15 +300,20 @@ class SocketIOSessionManager implements SocketIOSession.Factory {
 				socketIOSessions.remove(sessionId);
 			} else if (this.handler == null) {
 				this.handler = handler;
-				try {
-					state = ConnectionState.CONNECTED;
-					inbound.onConnect(handler);
-				} catch (Throwable e) {
-                    if (LOGGER.isLoggable(Level.WARNING))
-                        LOGGER.log(Level.WARNING, "Session[" + sessionId + "]: Exception thrown by SocketIOInbound.onConnect()", e);
-					state = ConnectionState.CLOSED;
+                if(inbound == null) {
+                    state = ConnectionState.CLOSED;
 					handler.abort();
-				}
+                } else {
+                    try {
+                        state = ConnectionState.CONNECTED;
+                        inbound.onConnect(handler);
+                    } catch (Throwable e) {
+                        if (LOGGER.isLoggable(Level.WARNING))
+                            LOGGER.log(Level.WARNING, "Session[" + sessionId + "]: Exception thrown by SocketIOInbound.onConnect()", e);
+                        state = ConnectionState.CLOSED;
+                        handler.abort();
+                    }
+                }
 			} else {
 				handler.abort();
 			}
