@@ -218,6 +218,7 @@
                         <properties>
                             <owner>Tad Glines</owner>
                             <year>${project.inceptionYear}</year>
+                            <contributors>Ovea.com, Mycila.com</contributors>
                         </properties>
                         <excludes>
                             <exclude>.idea/**</exclude>
