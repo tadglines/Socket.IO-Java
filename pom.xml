@@ -62,33 +62,6 @@
         </license>
     </licenses>
 
-    <distributionManagement>
-        <!-- TODO: switch repositories when deploying on OSS Sonatype repos -->
-        <repository>
-            <id>mc-release</id>
-            <url>dav:https://mc-repo.googlecode.com/svn/maven2/releases</url>
-        </repository>
-        <!--<repository>
-            <id>socketio-staging</id>
-            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-        </repository>-->
-        <snapshotRepository>
-            <id>mc-snapshot</id>
-            <url>dav:https://mc-repo.googlecode.com/svn/maven2/snapshots</url>
-            <uniqueVersion>false</uniqueVersion>
-        </snapshotRepository>
-        <!--<snapshotRepository>
-            <id>socketio-snapshots</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
-            <uniqueVersion>false</uniqueVersion>
-        </snapshotRepository>-->
-        <site>
-            <id>website</id>
-            <name>website</name>
-            <url>file://${basedir}/target/dist/site</url>
-        </site>
-    </distributionManagement>
-
     <issueManagement>
         <system>github</system>
         <url>https://github.com/tadglines/Socket.IO-Java/issues</url>
@@ -110,6 +83,14 @@
         <module>extension</module>
         <module>samples</module>
     </modules>
+
+    <distributionManagement>
+        <site>
+            <id>website</id>
+            <name>website</name>
+            <url>file://${basedir}/target/dist/site</url>
+        </site>
+    </distributionManagement>
 
     <build>
         <extensions>
@@ -213,7 +194,6 @@
                     <artifactId>maven-license-plugin</artifactId>
                     <version>1.9.0</version>
                     <configuration>
-                        <header>https://github.com/tadglines/Socket.IO-Java/raw/master/licenses/MIT</header>
                         <strictCheck>true</strictCheck>
                         <properties>
                             <owner>Tad Glines</owner>
@@ -315,19 +295,6 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- TODO: activate if deploying in OSS Sonatype repos or maven central repo togpg sign jars -->
-            <!--<plugin>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>-->
         </plugins>
     </build>
 
@@ -426,5 +393,76 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+
+    <profiles>
+
+        <profile>
+            <id>default</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <distributionManagement>
+                <repository>
+                    <id>socketio-staging</id>
+                    <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+                </repository>
+                <snapshotRepository>
+                    <id>socketio-snapshots</id>
+                    <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+                    <uniqueVersion>false</uniqueVersion>
+                </snapshotRepository>
+            </distributionManagement>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.mycila.maven-license-plugin</groupId>
+                        <artifactId>maven-license-plugin</artifactId>
+                        <configuration>
+                            <header>https://github.com/tadglines/Socket.IO-Java/raw/master/licenses/MIT</header>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+        <profile>
+            <id>ovea</id>
+            <distributionManagement>
+                <repository>
+                    <id>mc-release</id>
+                    <url>dav:https://mc-repo.googlecode.com/svn/maven2/releases</url>
+                </repository>
+                <snapshotRepository>
+                    <id>mc-snapshot</id>
+                    <url>dav:https://mc-repo.googlecode.com/svn/maven2/snapshots</url>
+                    <uniqueVersion>false</uniqueVersion>
+                </snapshotRepository>
+            </distributionManagement>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.mycila.maven-license-plugin</groupId>
+                        <artifactId>maven-license-plugin</artifactId>
+                        <configuration>
+                            <header>https://github.com/Ovea/Socket.IO-Java/raw/master/licenses/MIT</header>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
+    </profiles>
 
 </project>
