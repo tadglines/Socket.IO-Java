@@ -333,6 +333,11 @@
             </dependency>
             <dependency>
                 <groupId>com.glines.socketio.extension</groupId>
+                <artifactId>socketio-jetty</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.glines.socketio.extension</groupId>
                 <artifactId>socketio-gwt</artifactId>
                 <version>${project.version}</version>
             </dependency>
