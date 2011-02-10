@@ -42,11 +42,11 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public abstract class XHRTransport extends AbstractHttpTransport {
+public abstract class JettyXHRTransport extends AbstractHttpTransport {
 
-    private static final Logger LOGGER = Logger.getLogger(XHRTransport.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(JettyXHRTransport.class.getName());
 
-    public static final String CONTINUATION_KEY = XHRTransport.class.getName() + ".Continuation";
+    public static final String CONTINUATION_KEY = JettyXHRTransport.class.getName() + ".Continuation";
     private final int bufferSize;
     private final int maxIdleTime;
 
@@ -369,7 +369,7 @@ public abstract class XHRTransport extends AbstractHttpTransport {
         }
     }
 
-    public XHRTransport(int bufferSize, int maxIdleTime) {
+    public JettyXHRTransport(int bufferSize, int maxIdleTime) {
         this.bufferSize = bufferSize;
         this.maxIdleTime = maxIdleTime;
     }

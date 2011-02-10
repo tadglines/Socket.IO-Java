@@ -26,6 +26,7 @@ import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
 import com.glines.socketio.server.*;
+import com.glines.socketio.util.Web;
 import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocketFactory;
 
@@ -37,9 +38,9 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class WebSocketTransport extends AbstractTransport {
+public class JettyWebSocketTransport extends TransportAdapter {
 
-    private static final Logger LOGGER = Logger.getLogger(WebSocketTransport.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(JettyWebSocketTransport.class.getName());
 
 	public static final String TRANSPORT_NAME = "websocket";
 	public static final long CONNECTION_TIMEOUT = 10*1000;
@@ -200,13 +201,13 @@ public class WebSocketTransport extends AbstractTransport {
 		}
 	}
 
-	public WebSocketTransport(int bufferSize, int maxIdleTime) {
+	public JettyWebSocketTransport(int bufferSize, int maxIdleTime) {
 		wsFactory = new WebSocketFactory();
 		wsFactory.setBufferSize(bufferSize);
 		wsFactory.setMaxIdleTime(maxIdleTime);
 		this.maxIdleTime = maxIdleTime;
 	}
-	
+
 	@Override
 	public String getName() {
 		return TRANSPORT_NAME;
@@ -219,7 +220,7 @@ public class WebSocketTransport extends AbstractTransport {
 			SocketIOSession.Factory sessionFactory)
 			throws IOException {
 
-		String sessionId = extractSessionId(request);
+		String sessionId = Web.extractSessionId(request);
 		
 		if ("GET".equals(request.getMethod()) && sessionId == null && "WebSocket".equals(request.getHeader("Upgrade"))) {
 			boolean hixie = request.getHeader("Sec-WebSocket-Key1") != null;

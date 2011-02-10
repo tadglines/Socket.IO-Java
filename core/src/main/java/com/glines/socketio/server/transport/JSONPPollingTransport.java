@@ -31,7 +31,7 @@ import javax.servlet.http.HttpServletResponse;
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
 
-public class JSONPPollingTransport extends XHRTransport {
+public class JSONPPollingTransport extends JettyXHRTransport {
 	public static final String TRANSPORT_NAME = "jsonp-polling";
 	private long jsonpIndex = -1;
 

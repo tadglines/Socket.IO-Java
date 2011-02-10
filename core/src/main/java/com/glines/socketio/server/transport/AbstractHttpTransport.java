@@ -30,8 +30,10 @@ import javax.servlet.http.HttpServletResponse;
 import com.glines.socketio.server.SocketIOSession;
 import com.glines.socketio.server.SocketIOSession.SessionTransportHandler;
 import com.glines.socketio.server.Transport;
+import com.glines.socketio.server.TransportAdapter;
+import com.glines.socketio.util.Web;
 
-public abstract class AbstractHttpTransport extends AbstractTransport {
+public abstract class AbstractHttpTransport extends TransportAdapter {
 	/**
 	 * This is a sane default based on the timeout values of various browsers.
 	 */
@@ -78,7 +80,7 @@ public abstract class AbstractHttpTransport extends AbstractTransport {
 		if (obj != null) {
 			session = (SocketIOSession)obj;
 		} else {
-			sessionId = extractSessionId(request);
+			sessionId = Web.extractSessionId(request);
 			if (sessionId != null && sessionId.length() > 0) {
 				session = sessionFactory.getSession(sessionId);
 			}

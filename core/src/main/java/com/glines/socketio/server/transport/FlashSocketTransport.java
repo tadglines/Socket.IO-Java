@@ -45,7 +45,7 @@ import com.glines.socketio.server.SocketIOSession;
 import com.glines.socketio.server.Transport;
 import com.glines.socketio.util.IO;
 
-public class FlashSocketTransport extends WebSocketTransport {
+public class FlashSocketTransport extends JettyWebSocketTransport {
 	public static final String TRANSPORT_NAME = "flashsocket";
 	public static final String FLASHPOLICY_SERVER_HOST_KEY = "flashPolicyServerHost";
 	public static final String FLASHPOLICY_SERVER_PORT_KEY = "flashPolicyServerPort";

@@ -31,7 +31,7 @@ import javax.servlet.http.HttpServletResponse;
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
 
-public class XHRPollingTransport extends XHRTransport {
+public class XHRPollingTransport extends JettyXHRTransport {
 	public static final String TRANSPORT_NAME = "xhr-polling";
 
 	protected class XHRPollingSessionHelper extends XHRSessionHelper {

@@ -55,7 +55,7 @@ public abstract class SocketIOServlet extends HttpServlet {
 		int maxIdleTime = str==null ? MAX_IDLE_TIME_DEFAULT : Integer.parseInt(str);
 
 		sessionManager = new SocketIOSessionManager();
-		WebSocketTransport websocketTransport = new WebSocketTransport(bufferSize, maxIdleTime);
+		JettyWebSocketTransport websocketTransport = new JettyWebSocketTransport(bufferSize, maxIdleTime);
 		FlashSocketTransport flashsocketTransport = new FlashSocketTransport(bufferSize, maxIdleTime);
 		HTMLFileTransport htmlFileTransport = new HTMLFileTransport(bufferSize, maxIdleTime);
 		XHRMultipartTransport xhrMultipartTransport = new XHRMultipartTransport(bufferSize, maxIdleTime);

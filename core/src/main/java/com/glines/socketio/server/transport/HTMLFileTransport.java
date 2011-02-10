@@ -35,7 +35,7 @@ import com.glines.socketio.server.SocketIOSession;
 import com.glines.socketio.server.transport.ConnectionTimeoutPreventor.IdleCheck;
 import com.glines.socketio.util.JSON;
 
-public class HTMLFileTransport extends XHRTransport {
+public class HTMLFileTransport extends JettyXHRTransport {
 	public static final String TRANSPORT_NAME = "htmlfile";
 
 	private class HTMLFileSessionHelper extends XHRSessionHelper {
