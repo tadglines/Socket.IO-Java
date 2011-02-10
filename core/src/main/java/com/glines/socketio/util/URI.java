@@ -24,9 +24,9 @@ package com.glines.socketio.util;
 
 import java.io.UnsupportedEncodingException;
 
-public final class URIUtil {
+public final class URI {
 
-    private URIUtil() {
+    private URI() {
     }
 
     public static String decodePath(String path) {
