@@ -35,7 +35,7 @@ import com.glines.socketio.server.Transport;
 import com.glines.socketio.server.TransportAdapter;
 import com.glines.socketio.util.Web;
 
-public abstract class AbstractHttpTransport extends TransportAdapter {
+public abstract class HttpTransport extends TransportAdapter {
 	/**
 	 * This is a sane default based on the timeout values of various browsers.
 	 */
@@ -58,10 +58,7 @@ public abstract class AbstractHttpTransport extends TransportAdapter {
 	 */
 	public static long REQUEST_TIMEOUT = 20*1000;
 	
-	protected static final String SESSION_KEY = AbstractHttpTransport.class.getName() +  ".Session";
-
-	public AbstractHttpTransport() {
-	}
+	protected static final String SESSION_KEY = HttpTransport.class.getName() +  ".Session";
 
 	protected abstract SocketIOSession connect(
 			HttpServletRequest request,
@@ -70,7 +67,7 @@ public abstract class AbstractHttpTransport extends TransportAdapter {
 			SocketIOSession.Factory sessionFactory) throws IOException;
 
 	@Override
-	public void handle(HttpServletRequest request,
+	public final void handle(HttpServletRequest request,
 			HttpServletResponse response,
 			Transport.InboundFactory inboundFactory,
 			SocketIOSession.Factory sessionFactory)

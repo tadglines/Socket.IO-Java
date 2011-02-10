@@ -33,14 +33,14 @@ import javax.servlet.http.HttpServletResponse;
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
 
-public class JSONPPollingTransport extends JettyXHRTransport {
+public class JSONPPollingTransport extends XHRTransport {
 	public static final String TRANSPORT_NAME = "jsonp-polling";
 	private long jsonpIndex = -1;
 
-	protected class XHRPollingSessionHelper extends XHRSessionHelper {
+	protected class XHRPollingSessionHelper extends JettyXHRSessionHelper {
 
-		XHRPollingSessionHelper(SocketIOSession session) {
-			super(session, false);
+		XHRPollingSessionHelper(SocketIOSession session, int bufferSize, int maxIdleTime) {
+			super(session, false, bufferSize, maxIdleTime);
 		}
 
 		protected void startSend(HttpServletResponse response) throws IOException {
@@ -82,7 +82,7 @@ public class JSONPPollingTransport extends JettyXHRTransport {
 	}
 	
 
-	protected XHRPollingSessionHelper createHelper(SocketIOSession session) {
-		return new XHRPollingSessionHelper(session);
+	protected XHRPollingSessionHelper createHelper(SocketIOSession session, int bufferSize, int maxIdleTime) {
+		return new XHRPollingSessionHelper(session, bufferSize, maxIdleTime);
 	}
 }

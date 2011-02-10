@@ -34,17 +34,17 @@ import javax.servlet.http.HttpServletResponse;
 
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.transport.ConnectionTimeoutPreventor.IdleCheck;
+import com.glines.socketio.server.transport.JettyConnectionTimeoutPreventor.IdleCheck;
 import com.glines.socketio.util.JSON;
 
-public class HTMLFileTransport extends JettyXHRTransport {
+public class HTMLFileTransport extends XHRTransport {
 	public static final String TRANSPORT_NAME = "htmlfile";
 
-	private class HTMLFileSessionHelper extends XHRSessionHelper {
+	private class HTMLFileSessionHelper extends JettyXHRSessionHelper {
 		private final IdleCheck idleCheck;
 
-		HTMLFileSessionHelper(SocketIOSession session, IdleCheck idleCheck) {
-			super(session, true);
+		HTMLFileSessionHelper(SocketIOSession session, IdleCheck idleCheck, int bufferSize, int maxIdleTime) {
+			super(session, true, bufferSize, maxIdleTime);
 			this.idleCheck = idleCheck;
 		}
 
@@ -84,8 +84,8 @@ public class HTMLFileTransport extends JettyXHRTransport {
 		return TRANSPORT_NAME;
 	}
 
-	protected XHRSessionHelper createHelper(SocketIOSession session) {
-		IdleCheck idleCheck = ConnectionTimeoutPreventor.newTimeoutPreventor();
-		return new HTMLFileSessionHelper(session, idleCheck);
+	protected JettyXHRSessionHelper createHelper(SocketIOSession session, int bufferSize, int maxIdleTime) {
+		IdleCheck idleCheck = JettyConnectionTimeoutPreventor.newTimeoutPreventor();
+		return new HTMLFileSessionHelper(session, idleCheck, bufferSize, maxIdleTime);
 	}
 }

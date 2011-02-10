@@ -26,7 +26,7 @@ package com.glines.socketio.server.transport;
 
 import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.transport.ConnectionTimeoutPreventor.IdleCheck;
+import com.glines.socketio.server.transport.JettyConnectionTimeoutPreventor.IdleCheck;
 
 import javax.servlet.ServletOutputStream;
 import javax.servlet.ServletResponse;
@@ -36,21 +36,21 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class XHRMultipartTransport extends JettyXHRTransport {
+public class XHRMultipartTransport extends XHRTransport {
 
     private static final Logger LOGGER = Logger.getLogger(XHRMultipartTransport.class.getName());
 
 	public static final String TRANSPORT_NAME = "xhr-multipart";
 	private static final int MULTIPART_BOUNDARY_LENGTH = 20;
 
-	private class XHRMultipartSessionHelper extends XHRSessionHelper {
+	private class XHRMultipartSessionHelper extends JettyXHRSessionHelper {
 		private final String contentType;
 		private final String boundary;
 		private final String boundarySeperator;
 		private final IdleCheck idleCheck;
 		
-		XHRMultipartSessionHelper(SocketIOSession session, IdleCheck idleCheck) {
-			super(session, true);
+		XHRMultipartSessionHelper(SocketIOSession session, IdleCheck idleCheck, int bufferSize, int maxIdleTime) {
+			super(session, true, bufferSize, maxIdleTime);
 			boundary = session.generateRandomString(MULTIPART_BOUNDARY_LENGTH);
 			boundarySeperator = "--" + boundary;
 			contentType = "multipart/x-mixed-replace;boundary=\""+boundary+"\"";
@@ -99,8 +99,8 @@ public class XHRMultipartTransport extends JettyXHRTransport {
 		return TRANSPORT_NAME;
 	}
 
-	protected XHRSessionHelper createHelper(SocketIOSession session) {
-		IdleCheck idleCheck = ConnectionTimeoutPreventor.newTimeoutPreventor();
-		return new XHRMultipartSessionHelper(session, idleCheck);
+	protected JettyXHRSessionHelper createHelper(SocketIOSession session, int bufferSize, int maxIdleTime) {
+		IdleCheck idleCheck = JettyConnectionTimeoutPreventor.newTimeoutPreventor();
+		return new XHRMultipartSessionHelper(session, idleCheck, bufferSize, maxIdleTime);
 	}
 }
