@@ -87,6 +87,7 @@ public abstract class AbstractHttpTransport extends AbstractTransport {
             ConnectableTransportHandler connectableTransportHandler = ConnectableTransportHandler.class.cast(transportHandler);
             connectableTransportHandler.setDataHandler(dataHandler);
             connectableTransportHandler.connect(request, response);
+            transportHandler.init(getConfig());
             return session;
         }
         return null;

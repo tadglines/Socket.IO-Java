@@ -60,7 +60,6 @@ public abstract class AbstractTransport implements Transport {
     protected final TransportHandler newHandler(Class<?> type, SocketIOSession session) {
         TransportHandler handler = transportHandlerProvider.get(type, getType());
         handler.setSession(session);
-        handler.init(config);
         return handler;
     }
 
