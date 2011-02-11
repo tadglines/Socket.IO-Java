@@ -81,13 +81,16 @@ public abstract class AbstractHttpTransport extends AbstractTransport {
         SocketIOInbound inbound = inboundFactory.getInbound(request);
         if (inbound != null) {
             SocketIOSession session = sessionFactory.createSession(inbound);
+            // get and init data handler
             DataHandler dataHandler = newDataHandler(session);
             dataHandler.init(getConfig());
+            // get and init transport handler
             TransportHandler transportHandler = newHandler(ConnectableTransportHandler.class, session);
             ConnectableTransportHandler connectableTransportHandler = ConnectableTransportHandler.class.cast(transportHandler);
             connectableTransportHandler.setDataHandler(dataHandler);
-            connectableTransportHandler.connect(request, response);
             transportHandler.init(getConfig());
+            // connect transport to session
+            connectableTransportHandler.connect(request, response);
             return session;
         }
         return null;
