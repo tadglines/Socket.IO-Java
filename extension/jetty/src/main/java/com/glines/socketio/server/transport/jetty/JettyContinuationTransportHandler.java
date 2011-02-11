@@ -1,20 +1,25 @@
-package com.glines.socketio.server.transport;
+package com.glines.socketio.server.transport.jetty;
 
+import com.glines.socketio.annotation.Handle;
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
 import com.glines.socketio.server.*;
+import com.glines.socketio.server.transport.AbstractHttpTransport;
+import com.glines.socketio.server.transport.DataHandler;
 import com.glines.socketio.util.IO;
 import com.glines.socketio.util.URI;
 import org.eclipse.jetty.continuation.Continuation;
 import org.eclipse.jetty.continuation.ContinuationListener;
 import org.eclipse.jetty.continuation.ContinuationSupport;
+import org.eclipse.jetty.server.HttpConnection;
 
-import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -22,61 +27,78 @@ import java.util.logging.Logger;
 /**
  * @author Mathieu Carbou
  */
-abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler implements ContinuationListener {
+@Handle({TransportType.HTML_FILE, TransportType.JSONP_POLLING, TransportType.XHR_MULTIPART, TransportType.XHR_POLLING})
+public final class JettyContinuationTransportHandler extends AbstractTransportHandler implements ContinuationListener, ConnectableTransportHandler {
 
-    private static final String CONTINUATION_KEY = XHRTransport.class.getName() + ".Continuation";
-    private static final Logger LOGGER = Logger.getLogger(JettyXHRSessionHelper.class.getName());
+    /**
+     * This specifies how long to wait for a pong (ping response).
+     */
+    private static final long DEFAULT_HEARTBEAT_TIMEOUT = 10 * 1000;
 
-    private final SocketIOSession session;
-    private final boolean isConnectionPersistant;
+    /**
+     * The amount of time the session will wait before trying to send a ping.
+     * Using a value of half the HTTP_REQUEST_TIMEOUT should be good enough.
+     */
+    private static final long DEFAULT_HEARTBEAT_DELAY = 15 * 1000;
 
-    private TransportBuffer buffer;
+    /**
+     * For non persistent connection transports, this is the amount of time to wait
+     * for messages before returning empty results.
+     */
+    private static final long DEFAULT_TIMEOUT = 5 * 1000;
+
+    /**
+     * For non persistent connection transports, this is the amount of time to wait
+     * for messages before returning empty results.
+     */
+    private static final long DEFAULT_CONTINUATION_TIMEOUT = 20 * 1000;
+
+    private static final String CONTINUATION_KEY = JettyContinuationTransportHandler.class.getName() + ".Continuation";
+    private static final Logger LOGGER = Logger.getLogger(JettyContinuationTransportHandler.class.getName());
+
     private volatile boolean is_open;
     private volatile Continuation continuation;
+
+    private TransportBuffer buffer;
     private boolean disconnectWhenEmpty;
     private int bufferSize;
     private int maxIdleTime;
+    private DataHandler dataHandler;
+    private long continuationTimeout;
 
-    JettyXHRSessionHelper(SocketIOSession session, boolean isConnectionPersistant) {
-        this.session = session;
-        this.isConnectionPersistant = isConnectionPersistant;
-    }
-
-    protected abstract void startSend(HttpServletResponse response) throws IOException;
-
-    protected abstract void writeData(ServletResponse response, String data) throws IOException;
-
-    protected abstract void finishSend(ServletResponse response) throws IOException;
-
-    public final SocketIOSession getSession() {
-        return session;
-    }
-
-    public void setBufferSize(int bufferSize) {
-        this.bufferSize = bufferSize;
-    }
-
-    public void setMaxIdleTime(int maxIdleTime) {
-        this.maxIdleTime = maxIdleTime;
+    @Override
+    public void setDataHandler(DataHandler dataHandler) {
+        this.dataHandler = dataHandler.isConnectionPersistent() ?
+                new ConnectionTimeoutPreventerDataHandler(dataHandler, newTimeoutPreventor()) :
+                dataHandler;
     }
 
     @Override
-    protected final void init() throws SessionTransportInitializationException {
-        setBufferSize(getConfig().getBufferSize());
-        setMaxIdleTime(getConfig().getMaxIdle());
+    protected final void init() {
+        this.bufferSize = getConfig().getBufferSize();
+        this.maxIdleTime = getConfig().getMaxIdle();
         this.buffer = new TransportBuffer(bufferSize);
-        if (isConnectionPersistant) {
-            session.setHeartbeat(HttpTransport.HEARTBEAT_DELAY);
-            session.setTimeout(HttpTransport.HEARTBEAT_TIMEOUT);
+        if (dataHandler.isConnectionPersistent()) {
+            getSession().setHeartbeat(getConfig().getHeartbeatDelay(DEFAULT_HEARTBEAT_DELAY));
+            getSession().setTimeout(getConfig().getHeartbeatTimeout(DEFAULT_HEARTBEAT_TIMEOUT));
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.fine(getConfig().getNamespace() + " transport handler configuration:\n" +
+                        " - heartbeatDelay=" + getSession().getHeartbeat() + "\n" +
+                        " - heartbeatTimeout=" + getSession().getTimeout());
         } else {
-            session.setTimeout((HttpTransport.HTTP_REQUEST_TIMEOUT - HttpTransport.REQUEST_TIMEOUT) / 2);
+            getSession().setTimeout(getConfig().getTimeout(DEFAULT_TIMEOUT));
+            this.continuationTimeout = getConfig().getLong("continuationTimeout", DEFAULT_CONTINUATION_TIMEOUT);
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.fine(getConfig().getNamespace() + " transport handler configuration:\n" +
+                        " - timeout=" + getSession().getTimeout() + "\n" +
+                        " - continuationTimeout=" + this.continuationTimeout);
         }
     }
 
     @Override
     public void disconnect() {
         synchronized (this) {
-            session.onDisconnect(DisconnectReason.DISCONNECT);
+            getSession().onDisconnect(DisconnectReason.DISCONNECT);
             abort();
         }
     }
@@ -84,20 +106,20 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
     @Override
     public void close() {
         synchronized (this) {
-            session.startClose();
+            getSession().startClose();
         }
     }
 
     @Override
     public ConnectionState getConnectionState() {
-        return session.getConnectionState();
+        return getSession().getConnectionState();
     }
 
     @Override
     public void sendMessage(SocketIOFrame frame) throws SocketIOException {
         synchronized (this) {
             if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: " + "sendMessage(frame): [" + frame.getFrameType() + "]: " + frame.getData());
+                LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: " + "sendMessage(frame): [" + frame.getFrameType() + "]: " + frame.getData());
             if (is_open) {
                 if (continuation != null) {
                     List<String> messages = buffer.drainMessages();
@@ -107,21 +129,21 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
                         data.append(msg);
                     }
                     try {
-                        writeData(continuation.getServletResponse(), data.toString());
+                        dataHandler.onWriteData(continuation.getServletResponse(), data.toString());
                     } catch (IOException e) {
                         throw new SocketIOException(e);
                     }
-                    if (!isConnectionPersistant && !continuation.isInitial()) {
+                    if (!dataHandler.isConnectionPersistent() && !continuation.isInitial()) {
                         Continuation cont = continuation;
                         continuation = null;
                         cont.complete();
                     } else {
-                        session.startHeartbeatTimer();
+                        getSession().startHeartbeatTimer();
                     }
                 } else {
                     String data = frame.encode();
                     if (!buffer.putMessage(data, maxIdleTime)) {
-                        session.onDisconnect(DisconnectReason.TIMEOUT);
+                        getSession().onDisconnect(DisconnectReason.TIMEOUT);
                         abort();
                         throw new SocketIOException();
                     }
@@ -135,7 +157,7 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
     @Override
     public void sendMessage(String message) throws SocketIOException {
         if (LOGGER.isLoggable(Level.FINE))
-            LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: " + "sendMessage(String): " + message);
+            LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: " + "sendMessage(String): " + message);
         sendMessage(SocketIOFrame.TEXT_MESSAGE_TYPE, message);
     }
 
@@ -144,8 +166,8 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
             throws SocketIOException {
         synchronized (this) {
             if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: " + "sendMessage(int, String): [" + messageType + "]: " + message);
-            if (is_open && session.getConnectionState() == ConnectionState.CONNECTED) {
+                LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: " + "sendMessage(int, String): [" + messageType + "]: " + message);
+            if (is_open && getSession().getConnectionState() == ConnectionState.CONNECTED) {
                 sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
             } else {
                 throw new SocketIOClosedException();
@@ -154,9 +176,8 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
     }
 
     @Override
-    public void handle(HttpServletRequest request,
-                       HttpServletResponse response, SocketIOSession session)
-            throws IOException {
+    public void handle(HttpServletRequest request, HttpServletResponse response, SocketIOSession session) throws IOException {
+
         if ("GET".equals(request.getMethod())) {
             synchronized (this) {
                 if (!is_open && buffer.isEmpty()) {
@@ -168,14 +189,14 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
                     if (continuation != null || cont != null) {
                         if (continuation == cont) {
                             continuation = null;
-                            finishSend(response);
+                            dataHandler.onFinishSend(response);
                         }
                         if (cont != null) {
                             request.removeAttribute(CONTINUATION_KEY);
                         }
                         return;
                     }
-                    if (!isConnectionPersistant) {
+                    if (!dataHandler.isConnectionPersistent()) {
                         if (!buffer.isEmpty()) {
                             List<String> messages = buffer.drainMessages();
                             if (messages.size() > 0) {
@@ -183,25 +204,25 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
                                 for (String msg : messages) {
                                     data.append(msg);
                                 }
-                                startSend(response);
-                                writeData(response, data.toString());
-                                finishSend(response);
+                                dataHandler.onStartSend(response);
+                                dataHandler.onWriteData(response, data.toString());
+                                dataHandler.onFinishSend(response);
                                 if (!disconnectWhenEmpty) {
-                                    session.startTimeoutTimer();
+                                    getSession().startTimeoutTimer();
                                 } else {
                                     abort();
                                 }
                             }
                         } else {
-                            session.clearTimeoutTimer();
-                            request.setAttribute(HttpTransport.SESSION_KEY, session);
+                            getSession().clearTimeoutTimer();
+                            request.setAttribute(AbstractHttpTransport.SESSION_KEY, session);
                             response.setBufferSize(bufferSize);
                             continuation = ContinuationSupport.getContinuation(request);
                             continuation.addContinuationListener(this);
-                            continuation.setTimeout(HttpTransport.REQUEST_TIMEOUT);
+                            continuation.setTimeout(continuationTimeout);
                             continuation.suspend(response);
                             request.setAttribute(CONTINUATION_KEY, continuation);
-                            startSend(response);
+                            dataHandler.onStartSend(response);
                         }
                     } else {
                         response.sendError(HttpServletResponse.SC_NOT_FOUND);
@@ -220,7 +241,7 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
                         List<SocketIOFrame> list = SocketIOFrame.parse(data);
                         synchronized (session) {
                             for (SocketIOFrame msg : list) {
-                                session.onMessage(msg);
+                                getSession().onMessage(msg);
                             }
                         }
                     }
@@ -228,8 +249,8 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
                     // it is set during a POST.
                     synchronized (this) {
                         if (disconnectWhenEmpty && buffer.isEmpty()) {
-                            if (session.getConnectionState() == ConnectionState.CLOSING) {
-                                session.onDisconnect(DisconnectReason.CLOSED);
+                            if (getSession().getConnectionState() == ConnectionState.CLOSING) {
+                                getSession().onDisconnect(DisconnectReason.CLOSED);
                             }
                             abort();
                         }
@@ -261,21 +282,21 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
     public void onComplete(Continuation cont) {
         if (continuation != null && cont == continuation) {
             continuation = null;
-            if (isConnectionPersistant) {
+            if (dataHandler.isConnectionPersistent()) {
                 is_open = false;
                 if (!disconnectWhenEmpty) {
-                    session.onDisconnect(DisconnectReason.DISCONNECT);
+                    getSession().onDisconnect(DisconnectReason.DISCONNECT);
                 }
                 abort();
             } else {
                 if (!is_open && buffer.isEmpty() && !disconnectWhenEmpty) {
-                    session.onDisconnect(DisconnectReason.DISCONNECT);
+                    getSession().onDisconnect(DisconnectReason.DISCONNECT);
                     abort();
                 } else {
                     if (disconnectWhenEmpty) {
                         abort();
                     } else {
-                        session.startTimeoutTimer();
+                        getSession().startTimeoutTimer();
                     }
                 }
             }
@@ -286,45 +307,42 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
     public void onTimeout(Continuation cont) {
         if (continuation != null && cont == continuation) {
             continuation = null;
-            if (isConnectionPersistant) {
+            if (dataHandler.isConnectionPersistent()) {
                 is_open = false;
-                session.onDisconnect(DisconnectReason.TIMEOUT);
+                getSession().onDisconnect(DisconnectReason.TIMEOUT);
                 abort();
             } else {
                 if (!is_open && buffer.isEmpty()) {
-                    session.onDisconnect(DisconnectReason.DISCONNECT);
+                    getSession().onDisconnect(DisconnectReason.DISCONNECT);
                     abort();
                 } else {
                     try {
-                        finishSend(cont.getServletResponse());
+                        dataHandler.onFinishSend(cont.getServletResponse());
                     } catch (IOException e) {
-                        session.onDisconnect(DisconnectReason.DISCONNECT);
+                        getSession().onDisconnect(DisconnectReason.DISCONNECT);
                         abort();
                     }
                 }
-                session.startTimeoutTimer();
+                getSession().startTimeoutTimer();
             }
         }
     }
 
-    protected abstract void customConnect(HttpServletRequest request,
-                                          HttpServletResponse response) throws IOException;
-
-    public void connect(HttpServletRequest request,
-                        HttpServletResponse response) throws IOException {
-        request.setAttribute(HttpTransport.SESSION_KEY, session);
+    @Override
+    public void connect(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        request.setAttribute(AbstractHttpTransport.SESSION_KEY, getSession());
         response.setBufferSize(bufferSize);
         continuation = ContinuationSupport.getContinuation(request);
         continuation.addContinuationListener(this);
-        if (isConnectionPersistant) {
+        if (dataHandler.isConnectionPersistent()) {
             continuation.setTimeout(0);
         }
-        customConnect(request, response);
+        dataHandler.onConnect(request, response);
         is_open = true;
-        session.onConnect(this);
-        finishSend(response);
+        getSession().onConnect(this);
+        dataHandler.onFinishSend(response);
         if (continuation != null) {
-            if (isConnectionPersistant) {
+            if (dataHandler.isConnectionPersistent()) {
                 request.setAttribute(CONTINUATION_KEY, continuation);
                 continuation.suspend(response);
             } else {
@@ -340,8 +358,8 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
 
     @Override
     public void abort() {
-        session.clearHeartbeatTimer();
-        session.clearTimeoutTimer();
+        getSession().clearHeartbeatTimer();
+        getSession().clearTimeoutTimer();
         is_open = false;
         if (continuation != null) {
             Continuation cont = continuation;
@@ -362,6 +380,53 @@ abstract class JettyXHRSessionHelper extends AbstractSessionTransportHandler imp
             }
         });
         buffer.clear();
-        session.onShutdown();
+        getSession().onShutdown();
+    }
+
+    /**
+     * This must be called within the context of an active HTTP request.
+     */
+    private static ConnectionTimeoutPreventer newTimeoutPreventor() {
+        HttpConnection httpConnection = HttpConnection.getCurrentConnection();
+        if (httpConnection == null)
+            throw new IllegalStateException("No HTTP connection bound to local thread !");
+        //call code reflectively because by default we have no access to jetty internal classes from a webapp
+        // thus by only using HttpConnection we only need to add "-org.eclipse.jetty.server.HttpConnection" to server classes
+        // to allow access to this class from a webapp
+        final Object endpoint = httpConnection.getEndPoint();
+        // try to cancel IDLE time
+        try {
+            Method cancelIdle = endpoint.getClass().getMethod("cancelIdle");
+            cancelIdle.invoke(endpoint);
+        } catch (NoSuchMethodException e) {
+            LOGGER.fine("TimeoutPreventor - No cancelIdle() method on endpoint class " + endpoint.getClass().getName());
+        } catch (IllegalAccessException e) {
+            LOGGER.warning("TimeoutPreventor - Cannot access cancelIdle() method on endpoint class " + endpoint.getClass().getName());
+        } catch (InvocationTargetException e) {
+            LOGGER.log(Level.WARNING, "TimeoutPreventor - Error calling cancelIdle() method on endpoint class " + endpoint.getClass().getName() + ": " + e.getMessage(), e);
+        }
+        // try to find scheduleIdle() method
+        try {
+            final Method scheduleIdle = endpoint.getClass().getMethod("scheduleIdle");
+            return new ConnectionTimeoutPreventer() {
+                @Override
+                public void connectionActive() {
+                    try {
+                        scheduleIdle.invoke(endpoint);
+                    } catch (IllegalAccessException e) {
+                        LOGGER.warning("TimeoutPreventor - Cannot access scheduleIdle() method on endpoint class " + endpoint.getClass().getName());
+                    } catch (InvocationTargetException e) {
+                        LOGGER.log(Level.WARNING, "TimeoutPreventor - Error calling scheduleIdle() method on endpoint class " + endpoint.getClass().getName() + ": " + e.getMessage(), e);
+                    }
+                }
+            };
+        } catch (NoSuchMethodException e) {
+            // if the method does not exit, do nothing
+            return new ConnectionTimeoutPreventer() {
+                @Override
+                public void connectionActive() {
+                }
+            };
+        }
     }
 }

@@ -23,17 +23,6 @@
             <artifactId>servlet-api</artifactId>
             <scope>provided</scope>
         </dependency>
-
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-continuation</artifactId>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.eclipse.jetty</groupId>
-            <artifactId>jetty-websocket</artifactId>
-            <scope>provided</scope>
-        </dependency>
     </dependencies>
     
 </project>

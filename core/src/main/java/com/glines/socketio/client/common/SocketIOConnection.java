@@ -30,17 +30,11 @@ import com.glines.socketio.common.SocketIOException;
 
 public interface SocketIOConnection {
 	interface Factory {
-		SocketIOConnection create(SocketIOConnection.SocketIOConnectionListener listener,
+		SocketIOConnection create(SocketIOConnectionListener listener,
 				String host, short port);
 	}
 
-	interface SocketIOConnectionListener {
-		public abstract void onConnect();
-		public abstract void onDisconnect(DisconnectReason reason, String errorMessage);
-		public abstract void onMessage(int messageType, String message);
-	}
-
-	/**
+    /**
 	 * Initiate a connection attempt. If the connection succeeds, then the
 	 * {@link SocketIOConnectionListener#onConnect() onConnect} will be called. If the connection
 	 * attempt fails, then
@@ -83,7 +77,7 @@ public interface SocketIOConnection {
 	 * 
 	 * @param message
 	 * @throws IllegalStateException if the socket is not CONNECTED.
-	 * @throws SocketIOMessageParserException if the message type parser encode() failed.
+	 * @throws SocketIOException if the message type parser encode() failed.
 	 */
 	void sendMessage(int messageType, String message) throws SocketIOException;
 }

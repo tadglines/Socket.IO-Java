@@ -24,10 +24,7 @@
  */
 package com.glines.socketio.server.transport;
 
-import com.glines.socketio.server.AbstractTransport;
-import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.Transport;
-import com.glines.socketio.server.TransportInitializationException;
+import com.glines.socketio.server.*;
 import com.glines.socketio.util.IO;
 
 import javax.servlet.http.HttpServletRequest;
@@ -47,10 +44,14 @@ import java.util.logging.Logger;
 
 public class FlashSocketTransport extends AbstractTransport {
 
-    private static final String TRANSPORT_NAME = "flashsocket";
+    public static final String PARAM_FLASHPOLICY_DOMAIN = "flashPolicyDomain";
+    public static final String PARAM_FLASHPOLICY_SERVER_HOST = "flashPolicyServerHost";
+    public static final String PARAM_FLASHPOLICY_SERVER_PORT = "flashPolicyServerPort";
+    public static final String PARAM_FLASHPOLICY_PORTS = "flashPolicyPorts";
+
     private static final Logger LOGGER = Logger.getLogger(FlashSocketTransport.class.getName());
     private static final String FLASHFILE_NAME = "WebSocketMain.swf";
-    private static final String FLASHFILE_PATH = TRANSPORT_NAME + "/" + FLASHFILE_NAME;
+    private static final String FLASHFILE_PATH = TransportType.FLASH_SOCKET + "/" + FLASHFILE_NAME;
 
     private ServerSocketChannel flashPolicyServer;
     private ExecutorService executor = Executors.newCachedThreadPool();
@@ -64,18 +65,26 @@ public class FlashSocketTransport extends AbstractTransport {
     private Transport delegate;
 
     @Override
-    public String getName() {
-        return TRANSPORT_NAME;
+    public TransportType getType() {
+        return TransportType.FLASH_SOCKET;
     }
 
     @Override
     public void init() throws TransportInitializationException {
-        setFlashPolicyDomain(getConfig().getFlashPolicyDomain());
-        setFlashPolicyPorts(getConfig().getFlashPolicyPorts());
-        setFlashPolicyServerHost(getConfig().getFlashPolicyServerHost());
-        setFlashPolicyServerPort(getConfig().getFlashPolicyServerPort());
+        this.flashPolicyDomain = getConfig().getString(PARAM_FLASHPOLICY_DOMAIN);
+        this.flashPolicyPorts = getConfig().getString(PARAM_FLASHPOLICY_PORTS);
+        this.flashPolicyServerHost = getConfig().getString(PARAM_FLASHPOLICY_SERVER_HOST);
+        this.flashPolicyServerPort = getConfig().getInt(PARAM_FLASHPOLICY_SERVER_PORT, 843);
+        this.delegate = getConfig().getWebSocketTransport();
 
-        setDelegate(getConfig().getWebSocketTransport());
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine(getType() + " configuration:\n" +
+                    " - flashPolicyDomain=" + flashPolicyDomain + "\n" +
+                    " - flashPolicyPorts=" + flashPolicyPorts + "\n" +
+                    " - flashPolicyServerHost=" + flashPolicyServerHost + "\n" +
+                    " - flashPolicyServerPort=" + flashPolicyServerPort + "\n" +
+                    " - websocket delegate=" + (delegate == null ? "<none>" : delegate.getClass().getName()));
+
         if (delegate == null)
             throw new TransportInitializationException("No WebSocket transport available for this transport: " + getClass().getName());
 
@@ -97,16 +106,16 @@ public class FlashSocketTransport extends AbstractTransport {
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        Transport.InboundFactory inboundFactory,
-                       SocketIOSession.Factory sessionFactory) throws IOException {
-        
+                       SessionManager sessionFactory) throws IOException {
+
         String path = request.getPathInfo();
         if (path == null || path.length() == 0 || "/".equals(path)) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid " + TRANSPORT_NAME + " transport request");
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid " + TransportType.FLASH_SOCKET + " transport request");
             return;
         }
         if (path.startsWith("/")) path = path.substring(1);
         String[] parts = path.split("/");
-        if ("GET".equals(request.getMethod()) && TRANSPORT_NAME.equals(parts[0])) {
+        if ("GET".equals(request.getMethod()) && TransportType.FLASH_SOCKET.name().equals(parts[0])) {
             if (!FLASHFILE_PATH.equals(path)) {
                 delegate.handle(request, response, inboundFactory, sessionFactory);
             } else {
@@ -120,7 +129,7 @@ public class FlashSocketTransport extends AbstractTransport {
                 }
             }
         } else {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid " + TRANSPORT_NAME + " transport request");
+            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid " + TransportType.FLASH_SOCKET + " transport request");
         }
     }
 
@@ -207,23 +216,4 @@ public class FlashSocketTransport extends AbstractTransport {
         }
     }
 
-    public void setDelegate(Transport delegate) {
-        this.delegate = delegate;
-    }
-
-    public void setFlashPolicyDomain(String flashPolicyDomain) {
-        this.flashPolicyDomain = flashPolicyDomain;
-    }
-
-    public void setFlashPolicyPorts(String flashPolicyPorts) {
-        this.flashPolicyPorts = flashPolicyPorts;
-    }
-
-    public void setFlashPolicyServerHost(String flashPolicyServerHost) {
-        this.flashPolicyServerHost = flashPolicyServerHost;
-    }
-
-    public void setFlashPolicyServerPort(int flashPolicyServerPort) {
-        this.flashPolicyServerPort = flashPolicyServerPort;
-    }
 }

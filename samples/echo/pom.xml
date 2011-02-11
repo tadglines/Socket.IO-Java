@@ -32,12 +32,6 @@
             <artifactId>servlet-api</artifactId>
             <scope>provided</scope>
         </dependency>
-
-        <dependency>
-            <groupId>org.testatoo.container</groupId>
-            <artifactId>testatoo-container-jetty</artifactId>
-            <scope>test</scope>
-        </dependency>
     </dependencies>
 
 </project>

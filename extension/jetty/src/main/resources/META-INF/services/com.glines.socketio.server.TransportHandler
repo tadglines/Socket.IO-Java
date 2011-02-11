@@ -1,0 +1,2 @@
+com.glines.socketio.server.transport.jetty.JettyWebSocketTransportHandler
+com.glines.socketio.server.transport.jetty.JettyContinuationTransportHandler

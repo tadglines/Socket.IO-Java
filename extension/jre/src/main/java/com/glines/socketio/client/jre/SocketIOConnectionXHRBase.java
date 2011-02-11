@@ -36,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.glines.socketio.client.common.SocketIOConnectionListener;
 import org.eclipse.jetty.client.Address;
 import org.eclipse.jetty.client.HttpClient;
 import org.eclipse.jetty.client.HttpExchange;
@@ -50,7 +51,7 @@ import com.glines.socketio.common.SocketIOException;
 import com.glines.socketio.server.SocketIOFrame;
 
 public class SocketIOConnectionXHRBase implements SocketIOConnection {
-	private final SocketIOConnection.SocketIOConnectionListener listener;
+	private final SocketIOConnectionListener listener;
 	private final String host;
 	private final short port;
 	private final String transport;
@@ -70,7 +71,7 @@ public class SocketIOConnectionXHRBase implements SocketIOConnection {
 	protected String closeId = null;
 	protected boolean disconnectWhenEmpty = false;
 
-	public SocketIOConnectionXHRBase(SocketIOConnection.SocketIOConnectionListener listener, 
+	public SocketIOConnectionXHRBase(SocketIOConnectionListener listener,
 			String host, short port, String transport, boolean isConnectionPersistent) {
 		this.listener = listener;
 		this.host = host;

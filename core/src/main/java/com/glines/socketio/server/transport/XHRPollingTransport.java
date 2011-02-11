@@ -24,51 +24,17 @@
  */
 package com.glines.socketio.server.transport;
 
-import java.io.IOException;
-
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.TransportType;
 
-public class XHRPollingTransport extends XHRTransport {
-	public static final String TRANSPORT_NAME = "xhr-polling";
+public class XHRPollingTransport extends AbstractHttpTransport {
+    @Override
+    public TransportType getType() {
+        return TransportType.XHR_POLLING;
+    }
 
-	protected class XHRPollingSessionHelper extends JettyXHRSessionHelper {
-
-		XHRPollingSessionHelper(SocketIOSession session) {
-			super(session, false);
-		}
-
-		protected void startSend(HttpServletResponse response) throws IOException {
-			response.setContentType("text/plain; charset=UTF-8");
-		}
-
-		@Override
-		protected void writeData(ServletResponse response, String data) throws IOException {
-			response.getOutputStream().print(data);
-			response.flushBuffer();
-		}
-
-		protected void finishSend(ServletResponse response) throws IOException {};
-
-		protected void customConnect(HttpServletRequest request,
-				HttpServletResponse response) throws IOException {
-			startSend(response);
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, getSession().getSessionId()));
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + REQUEST_TIMEOUT));
-		}
-	}
-
-	@Override
-	public String getName() {
-		return TRANSPORT_NAME;
-	}
-	
-
-	protected XHRPollingSessionHelper createHelper(SocketIOSession session) {
-		return new XHRPollingSessionHelper(session);
-	}
+    @Override
+    protected DataHandler newDataHandler(SocketIOSession session) {
+        return new JSONPPollingDataHandler(session);
+    }
 }

@@ -1,7 +1,5 @@
 Java backend integration for Socket.IO library (http://socket.io/)
 
-TODO - update doc
-
 To use in a jetty webapp, grant access in your jetty xml file to the jetty server class org.eclipse.jetty.server.HttpConnection
 
 <?xml version="1.0"?>

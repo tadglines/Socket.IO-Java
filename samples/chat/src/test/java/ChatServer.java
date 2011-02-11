@@ -102,9 +102,9 @@ public class ChatServer {
 
 	    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
 	    ServletHolder holder = new ServletHolder(new ChatSocketServlet());
-	    holder.setInitParameter(SocketIOConfig.PARAM_FLASHPOLICY_SERVER_HOST, host);
-	    holder.setInitParameter(SocketIOConfig.PARAM_FLASHPOLICY_DOMAIN, host);
-	    holder.setInitParameter(SocketIOConfig.PARAM_FLASHPOLICY_PORTS, ""+ port);
+	    holder.setInitParameter(FlashSocketTransport.PARAM_FLASHPOLICY_SERVER_HOST, host);
+	    holder.setInitParameter(FlashSocketTransport.PARAM_FLASHPOLICY_DOMAIN, host);
+	    holder.setInitParameter(FlashSocketTransport.PARAM_FLASHPOLICY_PORTS, ""+ port);
 	    context.addServlet(holder, "/socket.io/*");
 	    context.addServlet(new ServletHolder(new StaticServlet()), "/*");
 

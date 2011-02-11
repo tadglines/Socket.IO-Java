@@ -28,10 +28,8 @@ import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 
 public interface SocketIOSession {
-	interface Factory {
-		SocketIOSession createSession(SocketIOInbound inbound);
-		SocketIOSession getSession(String sessionId);
-	}
+    void setAttribute(String key, Object val);
+    Object getAttribute(String key);
 
     interface SessionTask {
 		/**
@@ -39,16 +37,14 @@ public interface SocketIOSession {
 		 */
 		boolean cancel();
 	}
-	
-	String generateRandomString(int length);
-	
+
 	String getSessionId();
 
 	ConnectionState getConnectionState();
 	
 	SocketIOInbound getInbound();
 
-	SessionTransportHandler getTransportHandler();
+	TransportHandler getTransportHandler();
 	
 	void setHeartbeat(long delay);
 	long getHeartbeat();
@@ -82,7 +78,7 @@ public interface SocketIOSession {
 	/**
 	 * @param handler The handler or null if the connection failed.
 	 */
-	void onConnect(SessionTransportHandler handler);
+	void onConnect(TransportHandler handler);
 	
 	/**
 	 * Pass message through to contained SocketIOInbound

@@ -7,46 +7,32 @@ import java.util.Collection;
  */
 public interface SocketIOConfig {
 
-    String KEY_TRANSPORT_WEBSOCKET = "websocket";
+    String PARAM_HEARTBEAT_DELAY = "heartbeat-delay";
+    String PARAM_HEARTBEAT_TIMEOUT = "heartbeat-timeout";
+    String PARAM_TIMEOUT = "timeout";
 
     String PARAM_BUFFER_SIZE = "bufferSize";
     String PARAM_MAX_IDLE = "maxIdleTime";
-    String PARAM_HEARTBEAT = "heartbeat";
-    String PARAM_SESSION_TIMEOUT = "timeout";
-
-    String PARAM_FLASHPOLICY_DOMAIN = "flashPolicyDomain";
-    String PARAM_FLASHPOLICY_SERVER_HOST = "flashPolicyServerHost";
-    String PARAM_FLASHPOLICY_SERVER_PORT = "flashPolicyServerPort";
-    String PARAM_FLASHPOLICY_PORTS = "flashPolicyPorts";
 
     int DEFAULT_BUFFER_SIZE = 8192;
     int DEFAULT_MAX_IDLE = 300 * 1000;
-    int DEFAULT_HEARTBEAT = DEFAULT_MAX_IDLE / 2;
-    int DEFAULT_SESSION_TIMEOUT = 10 * 1000;
 
-    long getHeartbeat();
-
-    long getTimeout();
-
+    long getHeartbeatDelay(long def);
+    long getHeartbeatTimeout(long def);
+    long getTimeout(long def);
     int getBufferSize();
-
     int getMaxIdle();
 
     void addTransport(Transport transport);
-
     Collection<Transport> getTransports();
-
-    Transport getTransport(String name);
-
-    void removeTransport(String name);
-
+    Transport getTransport(TransportType type);
+    void removeTransport(TransportType type);
     Transport getWebSocketTransport();
 
-    String getFlashPolicyDomain();
+    String getString(String key);
+    String getString(String key, String def);
+    int getInt(String key, int def);
+    long getLong(String key, long def);
 
-    String getFlashPolicyPorts();
-
-    String getFlashPolicyServerHost();
-
-    int getFlashPolicyServerPort();
+    String getNamespace();
 }

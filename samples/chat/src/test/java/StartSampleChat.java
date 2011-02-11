@@ -34,5 +34,9 @@ public final class StartSampleChat {
         // ContainerRunner could be directly run from a launcher with argument.
         // See ContainerRunner --help foe help
         ContainerRunner.main("-container", "jetty");
+
+        // comment the jetty extension in pom.xml to switch to tomcat
+        // and activate tomcat profile in your ide
+        //ContainerRunner.main("-container", "tomcat");
     }
 }

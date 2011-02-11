@@ -41,30 +41,41 @@ public abstract class SocketIOServlet extends HttpServlet {
     private static final Logger LOGGER = Logger.getLogger(SocketIOServlet.class.getName());
     private static final long serialVersionUID = 2L;
 
-    //private final Map<String, Transport> transports = new ConcurrentHashMap<String, Transport>();
-    //transports.put(transport.getName(), transport);
     private final SocketIOSessionManager sessionManager = new SocketIOSessionManager();
+    private final TransportHandlerProvider transportHandlerProvider = new AnnotationTransportHandlerProvider();
+
     private SocketIOConfig config;
 
     @Override
     public final void init() throws ServletException {
-        config = new ServletBasedSocketIOConfig(getServletConfig());
+        config = new ServletBasedSocketIOConfig(getServletConfig(), "socketio");
+
+        // lazy load available transport handlers
+        transportHandlerProvider.init();
+        if (LOGGER.isLoggable(Level.INFO))
+            LOGGER.log(Level.INFO, "Transport handlers loaded: " + transportHandlerProvider.listAll());
+
         // lazily load available transports
         TransportDiscovery transportDiscovery = new ClasspathTransportDiscovery();
         for (Transport transport : transportDiscovery.discover()) {
-            config.addTransport(transport);
+            if (transportHandlerProvider.isSupported(transport.getType())) {
+                transport.setTransportHandlerProvider(transportHandlerProvider);
+                config.addTransport(transport);
+            } else {
+                LOGGER.log(Level.WARNING, "Transport " + transport.getType() + " ignored since not supported by any TransportHandler");
+            }
         }
         // initialize them
         for (Transport t : config.getTransports()) {
             try {
                 t.init(getServletConfig());
             } catch (TransportInitializationException e) {
-                config.removeTransport(t.getName());
-                LOGGER.log(Level.WARNING, "Transport " + t.getName() + " disabled. Initialization failed: " + e.getMessage());
+                config.removeTransport(t.getType());
+                LOGGER.log(Level.WARNING, "Transport " + t.getType() + " disabled. Initialization failed: " + e.getMessage());
             }
         }
         if (LOGGER.isLoggable(Level.INFO))
-            LOGGER.log(Level.INFO, "Transports found: " + config.getTransports());
+            LOGGER.log(Level.INFO, "Transports loaded: " + config.getTransports());
     }
 
     @Override
@@ -101,7 +112,7 @@ public abstract class SocketIOServlet extends HttpServlet {
         if (path.startsWith("/")) path = path.substring(1);
         String[] parts = path.split("/");
 
-        Transport transport = config.getTransport(parts[0]);
+        Transport transport = config.getTransport(TransportType.from(parts[0]));
         if (transport == null) {
             if ("GET".equals(request.getMethod()) && "socket.io.js".equals(parts[0])) {
                 response.setContentType("text/javascript");
@@ -114,6 +125,9 @@ public abstract class SocketIOServlet extends HttpServlet {
                 return;
             }
         }
+
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.log(Level.FINE, "Handling request from " + request.getRemoteHost() + ":" + request.getRemotePort() + " with transport: " + transport.getType());
 
         transport.handle(request, response, new Transport.InboundFactory() {
             @Override

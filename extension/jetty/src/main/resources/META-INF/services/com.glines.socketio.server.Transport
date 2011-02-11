@@ -1,1 +1,1 @@
-com.glines.socketio.container.jetty.JettyWebSocketTransport
+com.glines.socketio.server.transport.jetty.JettyWebSocketTransport

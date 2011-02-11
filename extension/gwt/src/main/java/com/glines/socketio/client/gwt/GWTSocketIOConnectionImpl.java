@@ -25,6 +25,7 @@
 package com.glines.socketio.client.gwt;
 
 import com.glines.socketio.client.common.SocketIOConnection;
+import com.glines.socketio.client.common.SocketIOConnectionListener;
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
@@ -61,12 +62,12 @@ public class GWTSocketIOConnectionImpl implements SocketIOConnection {
 	}
 	
 	
-	private final SocketIOConnection.SocketIOConnectionListener listener;
+	private final SocketIOConnectionListener listener;
 	private final String host;
 	private final String port;
 	private SocketIOImpl socket = null;
 
-	GWTSocketIOConnectionImpl(SocketIOConnection.SocketIOConnectionListener listener,
+	GWTSocketIOConnectionImpl(SocketIOConnectionListener listener,
 			String host, short port) {
 		this.listener = listener;
 		this.host = host;

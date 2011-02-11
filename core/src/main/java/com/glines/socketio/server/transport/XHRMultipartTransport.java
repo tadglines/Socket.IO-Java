@@ -24,79 +24,17 @@
  */
 package com.glines.socketio.server.transport;
 
-import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.transport.JettyConnectionTimeoutPreventor.IdleCheck;
+import com.glines.socketio.server.TransportType;
 
-import javax.servlet.ServletOutputStream;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+public class XHRMultipartTransport extends AbstractHttpTransport {
+    @Override
+    public TransportType getType() {
+        return TransportType.XHR_MULTIPART;
+    }
 
-public class XHRMultipartTransport extends XHRTransport {
-
-    private static final Logger LOGGER = Logger.getLogger(XHRMultipartTransport.class.getName());
-
-	public static final String TRANSPORT_NAME = "xhr-multipart";
-	private static final int MULTIPART_BOUNDARY_LENGTH = 20;
-
-	private class XHRMultipartSessionHelper extends JettyXHRSessionHelper {
-		private final String contentType;
-		private final String boundary;
-		private final String boundarySeperator;
-		private final IdleCheck idleCheck;
-		
-		XHRMultipartSessionHelper(SocketIOSession session, IdleCheck idleCheck) {
-			super(session, true);
-			boundary = session.generateRandomString(MULTIPART_BOUNDARY_LENGTH);
-			boundarySeperator = "--" + boundary;
-			contentType = "multipart/x-mixed-replace;boundary=\""+boundary+"\"";
-			this.idleCheck = idleCheck;
-		}
-
-		protected void startSend(HttpServletResponse response) throws IOException {
-			response.setContentType(contentType);
-			response.setHeader("Connection", "keep-alive");
-			ServletOutputStream os = response.getOutputStream();
-			os.print(boundarySeperator);
-			response.flushBuffer();
-		}
-
-		protected void writeData(ServletResponse response, String data) throws IOException {
-			idleCheck.activity();
-            if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: writeData(START): " + data);
-			ServletOutputStream os = response.getOutputStream();
-			os.println("Content-Type: text/plain");
-			os.println();
-			os.println(data);
-			os.println(boundarySeperator);
-			response.flushBuffer();
-            if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: writeData(END): " + data);
-		}
-
-		protected void finishSend(ServletResponse response) throws IOException {
-		}
-
-		protected void customConnect(HttpServletRequest request,
-				HttpServletResponse response) throws IOException {
-			startSend(response);
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, getSession().getSessionId()));
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + HEARTBEAT_DELAY));
-		}
-	}
-
-	@Override
-	public String getName() {
-		return TRANSPORT_NAME;
-	}
-
-	protected JettyXHRSessionHelper createHelper(SocketIOSession session) {
-		IdleCheck idleCheck = JettyConnectionTimeoutPreventor.newTimeoutPreventor();
-		return new XHRMultipartSessionHelper(session, idleCheck);
-	}
+    @Override
+    protected DataHandler newDataHandler(SocketIOSession session) {
+        return new XHRMultipartDataHandler(session);
+    }
 }

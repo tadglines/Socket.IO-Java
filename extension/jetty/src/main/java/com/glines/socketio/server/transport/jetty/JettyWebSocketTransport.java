@@ -22,36 +22,45 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.glines.socketio.container.jetty;
+package com.glines.socketio.server.transport.jetty;
 
 import com.glines.socketio.server.*;
 import com.glines.socketio.util.Web;
+import org.eclipse.jetty.websocket.WebSocket;
 import org.eclipse.jetty.websocket.WebSocketFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class JettyWebSocketTransport extends AbstractTransport {
+public final class JettyWebSocketTransport extends AbstractTransport {
+
+    private static final Logger LOGGER = Logger.getLogger(JettyWebSocketTransport.class.getName());
 
     private final WebSocketFactory wsFactory = new WebSocketFactory();
 
     @Override
     public void init() throws TransportInitializationException {
-        setBufferSize(getConfig().getBufferSize());
-        setMaxIdleTime(getConfig().getMaxIdle());
+        wsFactory.setBufferSize(getConfig().getBufferSize());
+        wsFactory.setMaxIdleTime(getConfig().getMaxIdle());
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine(getType() + " configuration:\n" +
+                    " - bufferSize=" + wsFactory.getBufferSize() + "\n" +
+                    " - maxIdle=" + wsFactory.getMaxIdleTime());
     }
 
     @Override
-    public String getName() {
-        return SocketIOConfig.KEY_TRANSPORT_WEBSOCKET;
+    public TransportType getType() {
+        return TransportType.WEB_SOCKET;
     }
 
     @Override
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        Transport.InboundFactory inboundFactory,
-                       SocketIOSession.Factory sessionFactory) throws IOException {
+                       SessionManager sessionFactory) throws IOException {
 
         String sessionId = Web.extractSessionId(request);
 
@@ -76,20 +85,12 @@ public class JettyWebSocketTransport extends AbstractTransport {
                 response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
             } else {
                 SocketIOSession session = sessionFactory.createSession(inbound);
-                JettyWebSocketSessionAdapter adapter = new JettyWebSocketSessionAdapter(session);
-                adapter.init(getServletConfig());
-                wsFactory.upgrade(request, response, adapter, origin, protocol);
+                TransportHandler handler = newHandler(WebSocket.class, session);
+                wsFactory.upgrade(request, response, WebSocket.class.cast(handler), origin, protocol);
             }
         } else {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, this + " transport error: Invalid request");
         }
     }
 
-    public void setBufferSize(int bufferSize) {
-        wsFactory.setBufferSize(bufferSize);
-    }
-
-    public void setMaxIdleTime(int maxIdleTime) {
-        wsFactory.setMaxIdleTime(maxIdleTime);
-    }
 }

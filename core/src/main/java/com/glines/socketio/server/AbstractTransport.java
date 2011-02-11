@@ -33,6 +33,7 @@ public abstract class AbstractTransport implements Transport {
 
     private ServletConfig servletConfig;
     private SocketIOConfig config;
+    private TransportHandlerProvider transportHandlerProvider;
 
     @Override
     public void destroy() {
@@ -41,7 +42,7 @@ public abstract class AbstractTransport implements Transport {
     @Override
     public final void init(ServletConfig config) throws TransportInitializationException {
         this.servletConfig = config;
-        this.config = new ServletBasedSocketIOConfig(servletConfig);
+        this.config = new ServletBasedSocketIOConfig(servletConfig, getType().toString());
         init();
     }
 
@@ -56,8 +57,20 @@ public abstract class AbstractTransport implements Transport {
     protected void init() throws TransportInitializationException {
     }
 
+    protected final TransportHandler newHandler(Class<?> type, SocketIOSession session) {
+        TransportHandler handler = transportHandlerProvider.get(type, getType());
+        handler.setSession(session);
+        handler.init(config);
+        return handler;
+    }
+
     @Override
     public String toString() {
-        return getName();
+        return getType().toString();
+    }
+
+    @Override
+    public final void setTransportHandlerProvider(TransportHandlerProvider transportHandlerProvider) {
+        this.transportHandlerProvider = transportHandlerProvider;
     }
 }

@@ -30,7 +30,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 public interface Transport {
-    
+
     interface InboundFactory {
         SocketIOInbound getInbound(HttpServletRequest request);
     }
@@ -38,7 +38,9 @@ public interface Transport {
     /**
      * @return The names of the transport instance.
      */
-    String getName();
+    TransportType getType();
+
+    void setTransportHandlerProvider(TransportHandlerProvider transportHandlerProvider);
 
     void init(ServletConfig config) throws TransportInitializationException;
 
@@ -47,5 +49,5 @@ public interface Transport {
     void handle(HttpServletRequest request,
                 HttpServletResponse response,
                 Transport.InboundFactory inboundFactory,
-                SocketIOSession.Factory sessionFactory) throws IOException;
+                SessionManager sessionFactory) throws IOException;
 }

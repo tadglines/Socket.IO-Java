@@ -22,7 +22,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-package com.glines.socketio.server.transport;
+package com.glines.socketio.server.transport.jetty;
 
 import java.util.ArrayList;
 import java.util.List;

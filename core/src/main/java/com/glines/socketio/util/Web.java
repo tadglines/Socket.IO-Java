@@ -25,11 +25,16 @@
 package com.glines.socketio.util;
 
 import javax.servlet.http.HttpServletRequest;
+import java.security.SecureRandom;
+import java.util.Random;
 
 /**
  * @author Mathieu Carbou
  */
 public final class Web {
+
+    private static final char[] BASE64_ALPHABET ="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".toCharArray();
+    private static Random random = new SecureRandom();
 
     private Web() {
     }
@@ -44,6 +49,16 @@ public final class Web {
             }
         }
         return null;
+    }
+
+    public static String generateRandomString(int length) {
+        StringBuilder result = new StringBuilder(length);
+        byte[] bytes = new byte[length];
+        random.nextBytes(bytes);
+        for (byte aByte : bytes) {
+            result.append(BASE64_ALPHABET[aByte & 0x3F]);
+        }
+        return result.toString();
     }
 
 }

@@ -5,6 +5,7 @@ import com.glines.socketio.util.ServiceClassLoader;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.logging.Level;
@@ -24,14 +25,22 @@ public final class ClasspathTransportDiscovery implements TransportDiscovery {
         ServiceClassLoader<Transport> serviceClassLoader = ServiceClassLoader.load(
                 Transport.class,
                 new DefaultLoader(Thread.currentThread().getContextClassLoader()));
-        for (Class<Transport> transportClass : serviceClassLoader) {
+        Iterator<Class<Transport>> it = serviceClassLoader.iterator();
+        while (it.hasNext()) {
+            Class<Transport> transportClass;
+            try {
+                transportClass = it.next();
+            } catch (Throwable e) {
+                LOGGER.log(Level.INFO, "Unable to load transport class: Error: " + e.getMessage(), e);
+                continue;
+            }
             try {
                 Constructor<Transport> ctor = transportClass.getConstructor();
                 transports.add(ctor.newInstance());
             } catch (InvocationTargetException e) {
-                LOGGER.log(Level.WARNING, "Unable to load transport class " + transportClass.getName() + " : " + e.getTargetException().getMessage());
-            } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Unable to load transport class " + transportClass.getName() + " : " + e.getMessage());
+                LOGGER.log(Level.INFO, "Unable to load transport class " + transportClass.getName() + ". Error: " + e.getTargetException().getMessage(), e.getTargetException());
+            } catch (Throwable e) {
+                LOGGER.log(Level.INFO, "Unable to load transport class " + transportClass.getName() + ". Error: " + e.getMessage(), e);
             }
         }
         return transports;

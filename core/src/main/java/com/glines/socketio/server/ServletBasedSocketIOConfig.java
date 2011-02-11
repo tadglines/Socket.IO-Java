@@ -28,28 +28,38 @@ import javax.servlet.ServletConfig;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * @author Mathieu Carbou
  */
 final class ServletBasedSocketIOConfig implements SocketIOConfig {
 
+    private static final Logger LOGGER = Logger.getLogger(ServletBasedSocketIOConfig.class.getName());
     private static final String KEY_TRANSPORT = SocketIOConfig.class.getName() + ".TRANSPORTS";
 
     private final ServletConfig config;
+    private final String namespace;
 
-    public ServletBasedSocketIOConfig(ServletConfig config) {
+    public ServletBasedSocketIOConfig(ServletConfig config, String namespace) {
+        this.namespace = namespace;
         this.config = config;
     }
 
     @Override
-    public long getHeartbeat() {
-        return getInt(PARAM_HEARTBEAT, DEFAULT_HEARTBEAT);
+    public long getHeartbeatDelay(long def) {
+        return getLong(PARAM_HEARTBEAT_DELAY, def);
     }
 
     @Override
-    public long getTimeout() {
-        return getInt(PARAM_SESSION_TIMEOUT, DEFAULT_SESSION_TIMEOUT);
+    public long getHeartbeatTimeout(long def) {
+        return getLong(PARAM_HEARTBEAT_TIMEOUT, def);
+    }
+
+    @Override
+    public long getTimeout(long def) {
+        return getLong(PARAM_TIMEOUT, def);
     }
 
     @Override
@@ -64,7 +74,7 @@ final class ServletBasedSocketIOConfig implements SocketIOConfig {
 
     @Override
     public void addTransport(Transport transport) {
-        getTransportMap().put(transport.getName(), transport);
+        getTransportMap().put(transport.getType(), transport);
     }
 
     @Override
@@ -73,50 +83,61 @@ final class ServletBasedSocketIOConfig implements SocketIOConfig {
     }
 
     @Override
-    public Transport getTransport(String name) {
-        return getTransportMap().get(name);
+    public Transport getTransport(TransportType type) {
+        return getTransportMap().get(type);
     }
 
     @Override
-    public void removeTransport(String name) {
-        getTransportMap().remove(name);
+    public void removeTransport(TransportType type) {
+        getTransportMap().remove(type);
     }
 
     @Override
     public Transport getWebSocketTransport() {
-        return getTransport(KEY_TRANSPORT_WEBSOCKET);
+        return getTransport(TransportType.WEB_SOCKET);
     }
 
     @Override
-    public String getFlashPolicyDomain() {
-        return config.getInitParameter(PARAM_FLASHPOLICY_DOMAIN);
-    }
-
-    @Override
-    public String getFlashPolicyPorts() {
-        return config.getInitParameter(PARAM_FLASHPOLICY_PORTS);
-    }
-
-    @Override
-    public String getFlashPolicyServerHost() {
-        return config.getInitParameter(PARAM_FLASHPOLICY_SERVER_HOST);
-    }
-
-    @Override
-    public int getFlashPolicyServerPort() {
-        return getInt(PARAM_FLASHPOLICY_SERVER_PORT, 843);
-    }
-
-    private  int getInt(String param, int def) {
-        String v = config.getInitParameter(param);
+    public int getInt(String param, int def) {
+        String v = getString(param);
         return v == null ? def : Integer.parseInt(v);
     }
 
+    @Override
+    public long getLong(String param, long def) {
+        String v = getString(param);
+        return v == null ? def : Long.parseLong(v);
+    }
+
+    @Override
+    public String getNamespace() {
+        return namespace;
+    }
+
+    @Override
+    public String getString(String param) {
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("Getting InitParameter: " + namespace + "." + param);
+        String v = config.getInitParameter(namespace + "." + param);
+        if (v == null) {
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.fine("Fallback to InitParameter: " + param);
+            v = config.getInitParameter(param);
+        }
+        return v;
+    }
+
+    @Override
+    public String getString(String param, String def) {
+        String v = getString(param);
+        return v == null ? def : v;
+    }
+
     @SuppressWarnings({"unchecked"})
-    private Map<String, Transport> getTransportMap() {
-        Map<String, Transport> transports = (Map<String, Transport>) config.getServletContext().getAttribute(KEY_TRANSPORT);
+    private Map<TransportType, Transport> getTransportMap() {
+        Map<TransportType, Transport> transports = (Map<TransportType, Transport>) config.getServletContext().getAttribute(KEY_TRANSPORT);
         if (transports == null)
-            config.getServletContext().setAttribute(KEY_TRANSPORT, transports = new ConcurrentHashMap<String, Transport>());
+            config.getServletContext().setAttribute(KEY_TRANSPORT, transports = new ConcurrentHashMap<TransportType, Transport>());
         return transports;
     }
 

@@ -22,24 +22,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 import com.glines.socketio.sample.gwtchat.GWTChatSocketServlet;
-import com.glines.socketio.server.SocketIOConfig;
+import com.glines.socketio.server.transport.FlashSocketTransport;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 
-import com.glines.socketio.server.transport.FlashSocketTransport;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 
 public class GWTChatServer {
 	private static class StaticServlet extends HttpServlet {
@@ -95,9 +93,9 @@ public class GWTChatServer {
 	    ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
 	    context.setResourceBase(war_dir);
 	    ServletHolder holder = new ServletHolder(new GWTChatSocketServlet());
-	    holder.setInitParameter(SocketIOConfig.PARAM_FLASHPOLICY_SERVER_HOST, host);
-	    holder.setInitParameter(SocketIOConfig.PARAM_FLASHPOLICY_DOMAIN, host);
-	    holder.setInitParameter(SocketIOConfig.PARAM_FLASHPOLICY_PORTS, ""+ port);
+	    holder.setInitParameter(FlashSocketTransport.PARAM_FLASHPOLICY_SERVER_HOST, host);
+	    holder.setInitParameter(FlashSocketTransport.PARAM_FLASHPOLICY_DOMAIN, host);
+	    holder.setInitParameter(FlashSocketTransport.PARAM_FLASHPOLICY_PORTS, ""+ port);
 	    context.addServlet(holder, "/socket.io/*");
 	    context.addServlet(new ServletHolder(new StaticServlet()), "/gwtchat.html");
 	    ServletHolder defaultServlet = new ServletHolder(new DefaultServlet());

@@ -24,64 +24,17 @@
  */
 package com.glines.socketio.server.transport;
 
-import java.io.IOException;
-import java.util.Arrays;
-
-import javax.servlet.ServletOutputStream;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
-import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOSession;
-import com.glines.socketio.server.transport.JettyConnectionTimeoutPreventor.IdleCheck;
-import com.glines.socketio.util.JSON;
+import com.glines.socketio.server.TransportType;
 
-public class HTMLFileTransport extends XHRTransport {
-	public static final String TRANSPORT_NAME = "htmlfile";
+public class HTMLFileTransport extends AbstractHttpTransport {
+    @Override
+    public TransportType getType() {
+        return TransportType.HTML_FILE;
+    }
 
-	private class HTMLFileSessionHelper extends JettyXHRSessionHelper {
-		private final IdleCheck idleCheck;
-
-		HTMLFileSessionHelper(SocketIOSession session, IdleCheck idleCheck) {
-			super(session, true);
-			this.idleCheck = idleCheck;
-		}
-
-		protected void startSend(HttpServletResponse response) throws IOException {
-			response.setContentType("text/html");
-			response.setHeader("Connection", "keep-alive");
-			response.setHeader("Transfer-Encoding", "chunked");
-			char[] spaces = new char[244];
-			Arrays.fill(spaces, ' ');
-			ServletOutputStream os = response.getOutputStream();
-			os.print("<html><body>" + new String(spaces));
-			response.flushBuffer();
-		}
-		
-		protected void writeData(ServletResponse response, String data) throws IOException {
-			idleCheck.activity();
-			response.getOutputStream().print("<script>parent.s._("+ JSON.toString(data) +", document);</script>");
-			response.flushBuffer();
-		}
-
-		protected void finishSend(ServletResponse response) throws IOException {};
-
-		protected void customConnect(HttpServletRequest request,
-				HttpServletResponse response) throws IOException {
-			startSend(response);
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, getSession().getSessionId()));
-			writeData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + HEARTBEAT_DELAY));
-		}
-	}
-
-	@Override
-	public String getName() {
-		return TRANSPORT_NAME;
-	}
-
-	protected JettyXHRSessionHelper createHelper(SocketIOSession session) {
-		IdleCheck idleCheck = JettyConnectionTimeoutPreventor.newTimeoutPreventor();
-		return new HTMLFileSessionHelper(session, idleCheck);
-	}
+    @Override
+    protected DataHandler newDataHandler(SocketIOSession session) {
+        return new HTMLFileDataHandler(session);
+    }
 }

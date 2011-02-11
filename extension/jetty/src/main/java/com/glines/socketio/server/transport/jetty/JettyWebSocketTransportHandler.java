@@ -1,5 +1,6 @@
-package com.glines.socketio.container.jetty;
+package com.glines.socketio.server.transport.jetty;
 
+import com.glines.socketio.annotation.Handle;
 import com.glines.socketio.common.ConnectionState;
 import com.glines.socketio.common.DisconnectReason;
 import com.glines.socketio.common.SocketIOException;
@@ -17,23 +18,25 @@ import java.util.logging.Logger;
 /**
  * @author Mathieu Carbou
  */
-final class JettyWebSocketSessionAdapter extends AbstractSessionTransportHandler implements WebSocket {
+@Handle({TransportType.WEB_SOCKET, TransportType.FLASH_SOCKET})
+public final class JettyWebSocketTransportHandler extends AbstractTransportHandler implements WebSocket {
 
-    private static final Logger LOGGER = Logger.getLogger(JettyWebSocketSessionAdapter.class.getName());
+    private static final long DEFAULT_HEARTBEAT_DELAY = SocketIOConfig.DEFAULT_MAX_IDLE / 2;
+    private static final long DEFAULT_HEARTBEAT_TIMEOUT = 10 * 1000;
 
-    private final SocketIOSession session;
+    private static final Logger LOGGER = Logger.getLogger(JettyWebSocketTransportHandler.class.getName());
 
     private Outbound outbound;
     private boolean initiated;
 
-    JettyWebSocketSessionAdapter(SocketIOSession session) {
-        this.session = session;
-    }
-
     @Override
-    protected void init() throws SessionTransportInitializationException {
-        session.setHeartbeat(getConfig().getHeartbeat());
-        session.setTimeout(getConfig().getTimeout());
+    protected void init() {
+        getSession().setHeartbeat(getConfig().getHeartbeatDelay(DEFAULT_HEARTBEAT_DELAY));
+        getSession().setTimeout(getConfig().getHeartbeatTimeout(DEFAULT_HEARTBEAT_TIMEOUT));
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine(getConfig().getNamespace() + " transport handler configuration:\n" +
+                    " - heartbeatDelay=" + getSession().getHeartbeat() + "\n" +
+                    " - heartbeatTimeout=" + getSession().getTimeout());
     }
 
     @Override
@@ -43,31 +46,31 @@ final class JettyWebSocketSessionAdapter extends AbstractSessionTransportHandler
 
     @Override
     public void onDisconnect() {
-        session.onShutdown();
+        getSession().onShutdown();
     }
 
     @Override
     public void onMessage(byte frame, String message) {
-        session.startHeartbeatTimer();
+        getSession().startHeartbeatTimer();
         if (!initiated) {
             if ("OPEN".equals(message)) {
                 try {
-                    outbound.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, session.getSessionId()));
-                    outbound.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + session.getHeartbeat()));
-                    session.onConnect(this);
+                    outbound.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, getSession().getSessionId()));
+                    outbound.sendMessage(SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + getSession().getHeartbeat()));
+                    getSession().onConnect(this);
                     initiated = true;
                 } catch (IOException e) {
                     outbound.disconnect();
-                    session.onShutdown();
+                    getSession().onShutdown();
                 }
             } else {
                 outbound.disconnect();
-                session.onShutdown();
+                getSession().onShutdown();
             }
         } else {
             List<SocketIOFrame> messages = SocketIOFrame.parse(message);
             for (SocketIOFrame msg : messages) {
-                session.onMessage(msg);
+                getSession().onMessage(msg);
             }
         }
     }
@@ -88,25 +91,25 @@ final class JettyWebSocketSessionAdapter extends AbstractSessionTransportHandler
 
     @Override
     public void disconnect() {
-        session.onDisconnect(DisconnectReason.DISCONNECT);
+        getSession().onDisconnect(DisconnectReason.DISCONNECT);
         outbound.disconnect();
     }
 
     @Override
     public void close() {
-        session.startClose();
+        getSession().startClose();
     }
 
     @Override
     public ConnectionState getConnectionState() {
-        return session.getConnectionState();
+        return getSession().getConnectionState();
     }
 
     @Override
     public void sendMessage(SocketIOFrame frame) throws SocketIOException {
         if (outbound.isOpen()) {
             if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: sendMessage: [" + frame.getFrameType() + "]: " + frame.getData());
+                LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: sendMessage: [" + frame.getFrameType() + "]: " + frame.getData());
             try {
                 outbound.sendMessage(frame.encode());
             } catch (IOException e) {
@@ -126,7 +129,7 @@ final class JettyWebSocketSessionAdapter extends AbstractSessionTransportHandler
     @Override
     public void sendMessage(int messageType, String message)
             throws SocketIOException {
-        if (outbound.isOpen() && session.getConnectionState() == ConnectionState.CONNECTED) {
+        if (outbound.isOpen() && getSession().getConnectionState() == ConnectionState.CONNECTED) {
             sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
         } else {
             throw new SocketIOClosedException();
@@ -142,6 +145,6 @@ final class JettyWebSocketSessionAdapter extends AbstractSessionTransportHandler
     public void abort() {
         outbound.disconnect();
         outbound = null;
-        session.onShutdown();
+        getSession().onShutdown();
     }
 }
