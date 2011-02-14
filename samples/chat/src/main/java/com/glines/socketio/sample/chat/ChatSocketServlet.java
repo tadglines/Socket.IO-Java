@@ -30,13 +30,13 @@ import com.glines.socketio.server.SocketIOFrame;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOOutbound;
 import com.glines.socketio.server.SocketIOServlet;
+import com.glines.socketio.util.JdkOverLog4j;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonSerializer;
 
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.net.Socket;
 import java.util.Collections;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -46,6 +46,12 @@ public class ChatSocketServlet extends SocketIOServlet {
     private static final long serialVersionUID = 1L;
     private AtomicInteger ids = new AtomicInteger(1);
     private Queue<ChatConnection> connections = new ConcurrentLinkedQueue<ChatConnection>();
+
+    @Override
+    public void init(ServletConfig config) throws ServletException {
+        JdkOverLog4j.install();
+        super.init(config);
+    }
 
     private class ChatConnection implements SocketIOInbound {
         private volatile SocketIOOutbound outbound = null;
