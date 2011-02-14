@@ -29,32 +29,30 @@ import com.glines.socketio.common.SocketIOException;
 import com.glines.socketio.server.SocketIOInbound;
 import com.glines.socketio.server.SocketIOOutbound;
 import com.glines.socketio.server.SocketIOServlet;
+import com.glines.socketio.util.JdkOverLog4j;
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
 
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
-import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.logging.Level;
-import java.util.logging.LogManager;
 import java.util.logging.Logger;
 
 public class EventBusServlet extends SocketIOServlet {
 
-    static {
-        try {
-            LogManager.getLogManager().reset();
-            LogManager.getLogManager().readConfiguration(Thread.currentThread().getContextClassLoader().getResourceAsStream("logging.properties"));
-        } catch (IOException e) {
-            throw new RuntimeException(e.getMessage(), e);
-        }
-    }
-
     private static final Logger LOGGER = Logger.getLogger(EventBusServlet.class.getName());
 
     private final ConcurrentMap<String, Endpoints> subscriptions = new ConcurrentHashMap<String, Endpoints>();
+
+    @Override
+    public void init(ServletConfig config) throws ServletException {
+        JdkOverLog4j.install();
+        super.init(config);
+    }
 
     @Override
     protected SocketIOInbound doSocketIOConnect(HttpServletRequest request) {
