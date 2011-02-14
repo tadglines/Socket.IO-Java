@@ -82,9 +82,9 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
 
     private volatile boolean is_open;
     private volatile Continuation continuation;
+    private volatile boolean disconnectWhenEmpty;
 
     private TransportBuffer buffer;
-    private boolean disconnectWhenEmpty;
     private int bufferSize;
     private int maxIdleTime;
     private DataHandler dataHandler;
@@ -121,17 +121,13 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
 
     @Override
     public void disconnect() {
-        synchronized (this) {
-            getSession().onDisconnect(DisconnectReason.DISCONNECT);
-            abort();
-        }
+        getSession().onDisconnect(DisconnectReason.DISCONNECT);
+        abort();
     }
 
     @Override
     public void close() {
-        synchronized (this) {
-            getSession().startClose();
-        }
+        getSession().startClose();
     }
 
     @Override
@@ -141,40 +137,38 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
 
     @Override
     public void sendMessage(SocketIOFrame frame) throws SocketIOException {
-        synchronized (this) {
-            if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: " + "sendMessage(frame): [" + frame.getFrameType() + "]: " + frame.getData());
-            if (is_open) {
-                if (continuation != null) {
-                    List<String> messages = buffer.drainMessages();
-                    messages.add(frame.encode());
-                    StringBuilder data = new StringBuilder();
-                    for (String msg : messages) {
-                        data.append(msg);
-                    }
-                    try {
-                        dataHandler.onWriteData(continuation.getServletResponse(), data.toString());
-                    } catch (IOException e) {
-                        throw new SocketIOException(e);
-                    }
-                    if (!dataHandler.isConnectionPersistent() && !continuation.isInitial()) {
-                        Continuation cont = continuation;
-                        continuation = null;
-                        cont.complete();
-                    } else {
-                        getSession().startHeartbeatTimer();
-                    }
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: " + "sendMessage(frame): [" + frame.getFrameType() + "]: " + frame.getData());
+        if (is_open) {
+            if (continuation != null) {
+                List<String> messages = buffer.drainMessages();
+                messages.add(frame.encode());
+                StringBuilder data = new StringBuilder();
+                for (String msg : messages) {
+                    data.append(msg);
+                }
+                try {
+                    dataHandler.onWriteData(continuation.getServletResponse(), data.toString());
+                } catch (IOException e) {
+                    throw new SocketIOException(e);
+                }
+                if (!dataHandler.isConnectionPersistent() && !continuation.isInitial()) {
+                    Continuation cont = continuation;
+                    continuation = null;
+                    cont.complete();
                 } else {
-                    String data = frame.encode();
-                    if (!buffer.putMessage(data, maxIdleTime)) {
-                        getSession().onDisconnect(DisconnectReason.TIMEOUT);
-                        abort();
-                        throw new SocketIOException();
-                    }
+                    getSession().startHeartbeatTimer();
                 }
             } else {
-                throw new SocketIOClosedException();
+                String data = frame.encode();
+                if (!buffer.putMessage(data, maxIdleTime)) {
+                    getSession().onDisconnect(DisconnectReason.TIMEOUT);
+                    abort();
+                    throw new SocketIOException();
+                }
             }
+        } else {
+            throw new SocketIOClosedException();
         }
     }
 
@@ -186,69 +180,63 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
     }
 
     @Override
-    public void sendMessage(int messageType, String message)
-            throws SocketIOException {
-        synchronized (this) {
-            if (LOGGER.isLoggable(Level.FINE))
-                LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: " + "sendMessage(int, String): [" + messageType + "]: " + message);
-            if (is_open && getSession().getConnectionState() == ConnectionState.CONNECTED) {
-                sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
-            } else {
-                throw new SocketIOClosedException();
-            }
+    public void sendMessage(int messageType, String message) throws SocketIOException {
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.log(Level.FINE, "Session[" + getSession().getSessionId() + "]: " + "sendMessage(int, String): [" + messageType + "]: " + message);
+        if (is_open && getSession().getConnectionState() == ConnectionState.CONNECTED) {
+            sendMessage(new SocketIOFrame(SocketIOFrame.FrameType.DATA, messageType, message));
+        } else {
+            throw new SocketIOClosedException();
         }
     }
 
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, SocketIOSession session) throws IOException {
-
         if ("GET".equals(request.getMethod())) {
-            synchronized (this) {
-                if (!is_open && buffer.isEmpty()) {
-                    response.sendError(HttpServletResponse.SC_NOT_FOUND);
-                } else {
-                    Continuation cont = (Continuation) request.getAttribute(CONTINUATION_KEY);
-                    if (continuation != null || cont != null) {
-                        if (continuation == cont) {
-                            continuation = null;
-                            dataHandler.onFinishSend(response);
-                        }
-                        if (cont != null) {
-                            request.removeAttribute(CONTINUATION_KEY);
-                        }
-                        return;
+            if (!is_open && buffer.isEmpty()) {
+                response.sendError(HttpServletResponse.SC_NOT_FOUND);
+            } else {
+                Continuation cont = (Continuation) request.getAttribute(CONTINUATION_KEY);
+                if (continuation != null || cont != null) {
+                    if (continuation == cont) {
+                        continuation = null;
+                        dataHandler.onFinishSend(response);
                     }
-                    if (!dataHandler.isConnectionPersistent()) {
-                        if (!buffer.isEmpty()) {
-                            List<String> messages = buffer.drainMessages();
-                            if (messages.size() > 0) {
-                                StringBuilder data = new StringBuilder();
-                                for (String msg : messages) {
-                                    data.append(msg);
-                                }
-                                dataHandler.onStartSend(response);
-                                dataHandler.onWriteData(response, data.toString());
-                                dataHandler.onFinishSend(response);
-                                if (!disconnectWhenEmpty) {
-                                    getSession().startTimeoutTimer();
-                                } else {
-                                    abort();
-                                }
+                    if (cont != null) {
+                        request.removeAttribute(CONTINUATION_KEY);
+                    }
+                    return;
+                }
+                if (!dataHandler.isConnectionPersistent()) {
+                    if (!buffer.isEmpty()) {
+                        List<String> messages = buffer.drainMessages();
+                        if (messages.size() > 0) {
+                            StringBuilder data = new StringBuilder();
+                            for (String msg : messages) {
+                                data.append(msg);
                             }
-                        } else {
-                            getSession().clearTimeoutTimer();
-                            request.setAttribute(AbstractHttpTransport.SESSION_KEY, session);
-                            response.setBufferSize(bufferSize);
-                            continuation = ContinuationSupport.getContinuation(request);
-                            continuation.addContinuationListener(this);
-                            continuation.setTimeout(continuationTimeout);
-                            continuation.suspend(response);
-                            request.setAttribute(CONTINUATION_KEY, continuation);
                             dataHandler.onStartSend(response);
+                            dataHandler.onWriteData(response, data.toString());
+                            dataHandler.onFinishSend(response);
+                            if (!disconnectWhenEmpty) {
+                                getSession().startTimeoutTimer();
+                            } else {
+                                abort();
+                            }
                         }
                     } else {
-                        response.sendError(HttpServletResponse.SC_NOT_FOUND);
+                        getSession().clearTimeoutTimer();
+                        request.setAttribute(AbstractHttpTransport.SESSION_KEY, session);
+                        response.setBufferSize(bufferSize);
+                        continuation = ContinuationSupport.getContinuation(request);
+                        continuation.addContinuationListener(this);
+                        continuation.setTimeout(continuationTimeout);
+                        continuation.suspend(response);
+                        request.setAttribute(CONTINUATION_KEY, continuation);
+                        dataHandler.onStartSend(response);
                     }
+                } else {
+                    response.sendError(HttpServletResponse.SC_NOT_FOUND);
                 }
             }
         } else if ("POST".equals(request.getMethod())) {
@@ -261,21 +249,17 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
                     String data = decodePostData(request.getContentType(), IO.toString(reader));
                     if (data != null && data.length() > 0) {
                         List<SocketIOFrame> list = SocketIOFrame.parse(data);
-                        synchronized (session) {
-                            for (SocketIOFrame msg : list) {
-                                getSession().onMessage(msg);
-                            }
+                        for (SocketIOFrame msg : list) {
+                            getSession().onMessage(msg);
                         }
                     }
                     // Ensure that the disconnectWhenEmpty flag is obeyed in the case where
                     // it is set during a POST.
-                    synchronized (this) {
-                        if (disconnectWhenEmpty && buffer.isEmpty()) {
-                            if (getSession().getConnectionState() == ConnectionState.CLOSING) {
-                                getSession().onDisconnect(DisconnectReason.CLOSED);
-                            }
-                            abort();
+                    if (disconnectWhenEmpty && buffer.isEmpty()) {
+                        if (getSession().getConnectionState() == ConnectionState.CLOSING) {
+                            getSession().onDisconnect(DisconnectReason.CLOSED);
                         }
+                        abort();
                     }
                 }
             }
