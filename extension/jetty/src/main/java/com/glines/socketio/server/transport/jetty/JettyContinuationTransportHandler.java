@@ -207,8 +207,6 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
                 if (!is_open && buffer.isEmpty()) {
                     response.sendError(HttpServletResponse.SC_NOT_FOUND);
                 } else {
-                    /*
-                           */
                     Continuation cont = (Continuation) request.getAttribute(CONTINUATION_KEY);
                     if (continuation != null || cont != null) {
                         if (continuation == cont) {

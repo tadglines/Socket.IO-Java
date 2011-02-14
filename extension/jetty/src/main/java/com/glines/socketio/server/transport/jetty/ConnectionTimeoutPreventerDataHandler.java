@@ -57,6 +57,7 @@ final class ConnectionTimeoutPreventerDataHandler implements DataHandler {
 
     @Override
     public void onConnect(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        timeoutPreventer.connectionActive();
         delegate.onConnect(request, response);
     }
 
@@ -74,5 +75,10 @@ final class ConnectionTimeoutPreventerDataHandler implements DataHandler {
     public void onWriteData(ServletResponse response, String data) throws IOException {
         timeoutPreventer.connectionActive();
         delegate.onWriteData(response, data);
+    }
+
+    @Override
+    public String toString() {
+        return "withTimeoutPreventer(" + delegate + ")";
     }
 }

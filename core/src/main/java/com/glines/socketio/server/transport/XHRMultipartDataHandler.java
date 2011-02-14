@@ -47,7 +47,7 @@ final class XHRMultipartDataHandler extends AbstractDataHandler {
 
     private final SocketIOSession session;
 
-    private long hearbeat;
+    private long hearbeatDelay;
 
     private final String contentType;
     private final String boundarySeperator;
@@ -61,10 +61,10 @@ final class XHRMultipartDataHandler extends AbstractDataHandler {
 
     @Override
     protected void init() {
-        this.hearbeat = getConfig().getHeartbeatDelay(DEFAULT_HEARTBEAT_DELAY);
+        this.hearbeatDelay = getConfig().getHeartbeatDelay(DEFAULT_HEARTBEAT_DELAY);
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.fine(getConfig().getNamespace() + " data handler configuration:\n" +
-                    " - heartbeatDelay=" + hearbeat);
+                    " - heartbeatDelay=" + hearbeatDelay);
     }
 
     @Override
@@ -103,6 +103,6 @@ final class XHRMultipartDataHandler extends AbstractDataHandler {
     public void onConnect(HttpServletRequest request, HttpServletResponse response) throws IOException {
         onStartSend(response);
         onWriteData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.SESSION_ID, 0, session.getSessionId()));
-        onWriteData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + hearbeat));
+        onWriteData(response, SocketIOFrame.encode(SocketIOFrame.FrameType.HEARTBEAT_INTERVAL, 0, "" + hearbeatDelay));
     }
 }
