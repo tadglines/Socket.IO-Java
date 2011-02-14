@@ -33,103 +33,140 @@
     <script type="text/javascript" src="jquery.json-2.2.min.js"></script>
     <script type="text/javascript" src="/socket.io/socket.io.js"></script>
     <script type="text/javascript">
-        (function($) {
-
-            var MessageType = {
-                SUBSCRIBE: 1,
-                UNSUBSCRIBE: 2,
-                PUBLISH: 3,
-                ACK: 4
-            };
-
-            var queue = [];
-            var socket = new io.Socket();
-
-            function send(msg) {
-                if (socket.isConnected()) {
-                    socket.send($.toJSON([msg]));
-                } else {
-                    queue.push(msg);
-                }
+        var LOG = {
+            debug: function(msg) {
+                jQuery('#logs').append('DEBUG: ' + msg + '\n');
+            },
+            info: function(msg) {
+                jQuery('#logs').append('INFO: ' + msg + '\n');
+            },
+            log: function(msg) {
+                jQuery('#logs').append('TRACE: ' + msg + '\n');
             }
+        };
+        var MessageType = {
+            SUBSCRIBE: 1,
+            UNSUBSCRIBE: 2,
+            PUBLISH: 3,
+            ACK: 4
+        };
 
-            socket.on('connect', function() {
-                console.info('Connected !');
-                if (queue.length > 0) {
-                    var q = queue;
-                    queue = [];
-                    console.debug('onConnect - dequeuing: ', $.toJSON(q));
-                    socket.send($.toJSON(q));
+        var queue = [];
+        var socket = new io.Socket();
+
+        function send(msg) {
+            if (socket.isConnected()) {
+                socket.send($.toJSON([msg]));
+            } else {
+                queue.push(msg);
+            }
+        }
+
+        socket.on('connect', function() {
+            LOG.info('Connected !');
+            if (queue.length > 0) {
+                var q = queue;
+                queue = [];
+                LOG.debug('onConnect - dequeuing: ', $.toJSON(q));
+                socket.send($.toJSON(q));
+            }
+        });
+
+        socket.on('disconnect', function (disconnectReason, errorMessage) {
+            LOG.debug('onDisconnect - reason=' + disconnectReason + ', err=' + errorMessage);
+            if (disconnectReason != socket.DR_CLOSED && disconnectReason != socket.DR_CLOSED_REMOTELY) {
+                LOG.debug('Reconnecting in 10 seconds...');
+                setTimeout(function() {
+                    LOG.info('Reconnecting...');
+                    socket.connect();
+                }, 10000);
+            }
+        });
+
+        socket.on('message', function(mtype, obj, error) {
+            LOG.debug('onMessage - type=' + mtype + ', err=' + error + ', data=' + $.toJSON(obj));
+            var msg = $.parseJSON(obj);
+            if (msg.type == MessageType.PUBLISH) {
+                $('body').append('<p>Firing JSON data ' + msg.data + ' in topic ' + msg.topic + '</p>');
+            }
+        });
+
+
+        window.TESTER = {
+            socket: socket,
+            start: function() {
+                if (!socket.isConnected()) {
+                    LOG.info('Starting...');
+                    socket.connect();
                 }
+            },
+            stop: function() {
+                if (socket.isConnected()) {
+                    LOG.info('Stopping...');
+                    socket.close();
+                }
+            },
+            publish: function(topic, data) {
+                data = $.toJSON(data);
+                LOG.debug('publish on topic ' + topic + ' data:' + data);
+                send({
+                    type: MessageType.PUBLISH,
+                    topic: topic,
+                    data: data
+                });
+            },
+            subscribe: function(topic) {
+                LOG.debug('subscribe - topic=' + topic);
+                send({
+                    type: MessageType.SUBSCRIBE,
+                    topic: topic
+                });
+            },
+            unsubscribe: function(topic) {
+                LOG.debug('unsubscribe - topic=' + topic);
+                send({
+                    type: MessageType.UNSUBSCRIBE,
+                    topic: topic
+                });
+            }
+        };
+
+        jQuery(function($) {
+
+            $('#start').click(function() {
+                LOG.debug('start...');
+                TESTER.start();
             });
 
-            socket.on('disconnect', function (disconnectReason, errorMessage) {
-                console.debug('onDisconnect - reason=' + disconnectReason + ', err=' + errorMessage);
-                if (disconnectReason != socket.DR_CLOSED && disconnectReason != socket.DR_CLOSED_REMOTELY) {
-                    console.debug('Reconnecting in 10 seconds...');
-                    setTimeout(function() {
-                        console.info('Reconnecting...');
-                        socket.connect();
-                    }, 10000);
-                }
-            });
-            
-            socket.on('message', function(mtype, obj, error) {
-                console.debug('onMessage - type=' + mtype + ', err=' + error + ', data=' + $.toJSON(obj));
-                var msg = $.parseJSON(obj);
-                if (msg.type == MessageType.PUBLISH) {
-                    $('body').append('<p>Firing JSON data ' + msg.data + ' in topic ' + msg.topic + '</p>');
-                }
+            $('#stop').click(function() {
+                LOG.debug('stop...');
+                TESTER.stop();
             });
 
+            LOG.log("WebSocket" in window);
+            LOG.log(WebSocket.prototype);
+            LOG.log(WebSocket.prototype.send);
+            LOG.log(WebSocket.prototype.send);
+            LOG.log(WebSocket.prototype.send.toString().match(/native/i));
+            LOG.log(!!WebSocket.prototype.send.toString().match(/native/i));
+            LOG.log(typeof WebSocket);
+            LOG.log(typeof WebSocket !== "undefined");
+            LOG.log("WebSocket" in window && WebSocket.prototype && ( WebSocket.prototype.send && !!WebSocket.prototype.send.toString().match(/native/i)) && typeof WebSocket !== "undefined");
 
-            window.TESTER = {
-                socket: socket,
-                start: function() {
-                    if (!socket.isConnected()) {
-                        console.info('Starting...');
-                        socket.connect();
-                    }
-                },
-                stop: function() {
-                    if (socket.isConnected()) {
-                        console.info('Stopping...');
-                        socket.close();
-                    }
-                },
-                publish: function(topic, data) {
-                    data = $.toJSON(data);
-                    console.debug('publish on topic ' + topic + ' data:' + data);
-                    send({
-                        type: MessageType.PUBLISH,
-                        topic: topic,
-                        data: data
-                    });
-                },
-                subscribe: function(topic) {
-                    console.debug('subscribe - topic=' + topic);
-                    send({
-                        type: MessageType.SUBSCRIBE,
-                        topic: topic
-                    });
-                },
-                unsubscribe: function(topic) {
-                    console.debug('unsubscribe - topic=' + topic);
-                    send({
-                        type: MessageType.UNSUBSCRIBE,
-                        topic: topic
-                    });
-                }
-            };
-        })(jQuery);
+        });
     </script>
 </head>
 <body>
+
+<input type="button" id="start" value="Start">
+<input type="button" id="stop" value="Stop">
+
 <p><strong>In the Firebug console, you can execute:</strong></p>
 <pre>TESTER.start();</pre>
 <pre>TESTER.subscribe('myTopic');</pre>
 <pre>TESTER.publish('myTopic', 'myMessage');</pre>
 <pre>TESTER.stop();</pre>
 <hr/>
+<pre id="logs"></pre>
 </body>
 </html>

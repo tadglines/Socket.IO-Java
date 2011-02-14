@@ -420,6 +420,7 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
         final Object endpoint = httpConnection.getEndPoint();
         // try to cancel IDLE time
         try {
+            LOGGER.fine("TimeoutPreventor - Invoking cancelIdle() method on endpoint class " + endpoint.getClass().getName());
             Method cancelIdle = endpoint.getClass().getMethod("cancelIdle");
             cancelIdle.invoke(endpoint);
         } catch (NoSuchMethodException e) {
@@ -436,6 +437,7 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
                 @Override
                 public void connectionActive() {
                     try {
+                        LOGGER.fine("TimeoutPreventor - Invoking scheduleIdle() method on endpoint class " + endpoint.getClass().getName());
                         scheduleIdle.invoke(endpoint);
                     } catch (IllegalAccessException e) {
                         LOGGER.warning("TimeoutPreventor - Cannot access scheduleIdle() method on endpoint class " + endpoint.getClass().getName());

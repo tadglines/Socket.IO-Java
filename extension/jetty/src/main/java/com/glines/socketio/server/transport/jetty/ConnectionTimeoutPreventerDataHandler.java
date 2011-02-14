@@ -33,8 +33,8 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
-* @author Mathieu Carbou
-*/
+ * @author Mathieu Carbou
+ */
 final class ConnectionTimeoutPreventerDataHandler implements DataHandler {
 
     private final DataHandler delegate;
