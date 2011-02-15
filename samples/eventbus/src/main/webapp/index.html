@@ -143,15 +143,42 @@
                 TESTER.stop();
             });
 
-            LOG.log("WebSocket" in window);
-            LOG.log(WebSocket.prototype);
-            LOG.log(WebSocket.prototype.send);
-            LOG.log(WebSocket.prototype.send);
-            LOG.log(WebSocket.prototype.send.toString().match(/native/i));
-            LOG.log(!!WebSocket.prototype.send.toString().match(/native/i));
-            LOG.log(typeof WebSocket);
-            LOG.log(typeof WebSocket !== "undefined");
-            LOG.log("WebSocket" in window && WebSocket.prototype && ( WebSocket.prototype.send && !!WebSocket.prototype.send.toString().match(/native/i)) && typeof WebSocket !== "undefined");
+            LOG.log('===== WS =====');
+            try {
+                LOG.log("WebSocket" in window);
+                LOG.log(WebSocket.prototype);
+                LOG.log(WebSocket.prototype.send);
+                LOG.log(WebSocket.prototype.send);
+                LOG.log(WebSocket.prototype.send.toString().match(/native/i));
+                LOG.log(!!WebSocket.prototype.send.toString().match(/native/i));
+                LOG.log(typeof WebSocket);
+                LOG.log(typeof WebSocket !== "undefined");
+                LOG.log("WebSocket" in window && WebSocket.prototype && ( WebSocket.prototype.send && !!WebSocket.prototype.send.toString().match(/native/i)) && typeof WebSocket !== "undefined");
+            } catch(e) {
+                LOG.log(e);
+            }
+            LOG.log('===== XHR Multipart =====');
+            try {
+                LOG.log('XMLHttpRequest' in window);
+                LOG.log('prototype' in XMLHttpRequest);
+                LOG.log('multipart' in XMLHttpRequest.prototype);
+                LOG.log('XMLHttpRequest' in window && 'prototype' in XMLHttpRequest && 'multipart' in XMLHttpRequest.prototype);
+            } catch(e) {
+                LOG.log(e);
+            }
+            LOG.log('===== XHR Polling =====');
+            try {
+                LOG.log('XMLHttpRequest' in window);
+                LOG.log((new XMLHttpRequest()).withCredentials != undefined);
+            } catch(e) {
+                LOG.log(e);
+            }
+            try {
+                LOG.log($.toJSON(XMLHttpRequest));
+                LOG.log($.toJSON(new XMLHttpRequest()));
+            } catch(e) {
+                LOG.log(e);
+            }
 
         });
     </script>
