@@ -45,7 +45,7 @@ public final class Web {
             if (path.startsWith("/")) path = path.substring(1);
             String[] parts = path.split("/");
             if (parts.length >= 2) {
-                return parts[1] == null ? null : (parts[1].length() == 0 ? null : parts[1]);
+                return parts[1] == null || parts[1].length() == 0 || parts[1].equals("null") ? null : parts[1];
             }
         }
         return null;

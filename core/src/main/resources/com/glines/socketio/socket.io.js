@@ -313,7 +313,7 @@ if (typeof window != 'undefined'){
 			+ ':' + this.base.options.port
 			+ '/' + this.base.options.resource
 			+ '/' + this.type
-			+ (this.sessionid ? ('/' + this.sessionid) : '/');
+			+ '/' + (this.sessionid ? this.sessionid : 'null');
 	};
 
 })();
@@ -548,7 +548,7 @@ if (typeof window != 'undefined'){
 		+ ':' + this.base.options.port
 		+ '/' + this.base.options.resource
 		+ '/' + this.type
-		+ (this.sessionid ? ('/' + this.sessionid) : '');
+		+ '/' + (this.sessionid ? this.sessionid : 'null');
 	};
 	
 	WS.check = function(){
