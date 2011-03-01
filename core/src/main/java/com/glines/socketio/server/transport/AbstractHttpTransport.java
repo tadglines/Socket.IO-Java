@@ -30,9 +30,12 @@ import com.glines.socketio.util.Web;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public abstract class AbstractHttpTransport extends AbstractTransport {
 
+    private static final Logger LOGGER = Logger.getLogger(AbstractHttpTransport.class.getName());
     public static final String SESSION_KEY = AbstractHttpTransport.class.getName() + ".Session";
 
     @Override
@@ -40,6 +43,9 @@ public abstract class AbstractHttpTransport extends AbstractTransport {
                              HttpServletResponse response,
                              Transport.InboundFactory inboundFactory,
                              SessionManager sessionFactory) throws IOException {
+
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("Handling request " + request.getRequestURI() + " by " + getClass().getName());
 
         Object obj = request.getAttribute(SESSION_KEY);
         SocketIOSession session = null;
@@ -61,6 +67,8 @@ public abstract class AbstractHttpTransport extends AbstractTransport {
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             }
         } else if (sessionId != null && sessionId.length() > 0) {
+            if (LOGGER.isLoggable(Level.FINE))
+                LOGGER.fine("got session id " + sessionId + " but no session found");
             response.sendError(HttpServletResponse.SC_BAD_REQUEST);
         } else {
             if ("GET".equals(request.getMethod())) {

@@ -143,6 +143,14 @@
                 TESTER.stop();
             });
 
+            $('#subscribe').click(function() {
+                TESTER.subscribe($('#topic').val());
+            });
+
+            $('#send').click(function() {
+                TESTER.publish($('#topic').val(), $('#msg').val());
+            });
+
             LOG.log('===== WS =====');
             try {
                 LOG.log("WebSocket" in window);
@@ -180,6 +188,7 @@
                 LOG.log(e);
             }
 
+
         });
     </script>
 </head>
@@ -187,6 +196,9 @@
 
 <input type="button" id="start" value="Start">
 <input type="button" id="stop" value="Stop">
+
+Topic: <input type="text" id="topic" value="myTopic"> <input type="button" id="subscribe" value="Subscribe">
+Message: <input type="text" id="msg" value="my message"> <input type="button" id="send" value="Send">
 
 <p><strong>In the Firebug console, you can execute:</strong></p>
 <pre>TESTER.start();</pre>

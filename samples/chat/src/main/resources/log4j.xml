@@ -68,7 +68,7 @@
     </category>
 
     <category name="org.eclipse.jetty.util.log">
-        <priority value="INFO"/>
+        <priority value="TRACE"/>
     </category>
 
     <!-- ======================= -->

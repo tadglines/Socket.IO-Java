@@ -45,6 +45,7 @@ import java.util.logging.Logger;
 public class EventBusServlet extends SocketIOServlet {
 
     private static final Logger LOGGER = Logger.getLogger(EventBusServlet.class.getName());
+    private static final long serialVersionUID = 5761989518185277878L;
 
     private final ConcurrentMap<String, Endpoints> subscriptions = new ConcurrentHashMap<String, Endpoints>();
 
@@ -56,6 +57,8 @@ public class EventBusServlet extends SocketIOServlet {
 
     @Override
     protected SocketIOInbound doSocketIOConnect(HttpServletRequest request) {
+        if (LOGGER.isLoggable(Level.FINE))
+            LOGGER.fine("doSocketIOConnect : " + request.getRemoteHost() + ":" + request.getRemotePort());
         return new Endpoint(request.getSession().getId(), request.getRemoteHost(), request.getRemotePort());
     }
 
