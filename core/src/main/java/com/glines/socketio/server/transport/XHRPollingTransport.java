@@ -35,6 +35,6 @@ public class XHRPollingTransport extends AbstractHttpTransport {
 
     @Override
     protected DataHandler newDataHandler(SocketIOSession session) {
-        return new JSONPPollingDataHandler(session);
+        return new XHRPollingDataHandler(session);
     }
 }
