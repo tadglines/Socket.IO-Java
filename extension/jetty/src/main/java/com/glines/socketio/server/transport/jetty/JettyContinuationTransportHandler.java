@@ -395,7 +395,7 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
     private static ConnectionTimeoutPreventer newTimeoutPreventor() {
         HttpConnection httpConnection = HttpConnection.getCurrentConnection();
         if (httpConnection == null)
-            throw new IllegalStateException("No HTTP connection bound to local thread !");
+            throw new IllegalStateException("No HTTP connection bound to local thread " + Thread.currentThread().getName());
         //call code reflectively because by default we have no access to jetty internal classes from a webapp
         // thus by only using HttpConnection we only need to add "-org.eclipse.jetty.server.HttpConnection" to server classes
         // to allow access to this class from a webapp
