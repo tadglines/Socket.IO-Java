@@ -394,47 +394,54 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
      */
     private static ConnectionTimeoutPreventer newTimeoutPreventor() {
         HttpConnection httpConnection = HttpConnection.getCurrentConnection();
-        if (httpConnection == null)
-            throw new IllegalStateException("No HTTP connection bound to local thread " + Thread.currentThread().getName());
-        //call code reflectively because by default we have no access to jetty internal classes from a webapp
-        // thus by only using HttpConnection we only need to add "-org.eclipse.jetty.server.HttpConnection" to server classes
-        // to allow access to this class from a webapp
-        final Object endpoint = httpConnection.getEndPoint();
-        // try to cancel IDLE time
-        try {
-            LOGGER.fine("TimeoutPreventor - Invoking cancelIdle() method on endpoint class " + endpoint.getClass().getName());
-            Method cancelIdle = endpoint.getClass().getMethod("cancelIdle");
-            cancelIdle.invoke(endpoint);
-        } catch (NoSuchMethodException e) {
-            LOGGER.fine("TimeoutPreventor - No cancelIdle() method on endpoint class " + endpoint.getClass().getName());
-        } catch (IllegalAccessException e) {
-            LOGGER.warning("TimeoutPreventor - Cannot access cancelIdle() method on endpoint class " + endpoint.getClass().getName());
-        } catch (InvocationTargetException e) {
-            LOGGER.log(Level.WARNING, "TimeoutPreventor - Error calling cancelIdle() method on endpoint class " + endpoint.getClass().getName() + ": " + e.getMessage(), e);
-        }
-        // try to find scheduleIdle() method
-        try {
-            final Method scheduleIdle = endpoint.getClass().getMethod("scheduleIdle");
+        if (httpConnection == null) {
+            LOGGER.log(Level.WARNING, "No HttpConnection boundto local thread: " + Thread.currentThread().getName());
             return new ConnectionTimeoutPreventer() {
                 @Override
                 public void connectionActive() {
-                    try {
-                        LOGGER.fine("TimeoutPreventor - Invoking scheduleIdle() method on endpoint class " + endpoint.getClass().getName());
-                        scheduleIdle.invoke(endpoint);
-                    } catch (IllegalAccessException e) {
-                        LOGGER.warning("TimeoutPreventor - Cannot access scheduleIdle() method on endpoint class " + endpoint.getClass().getName());
-                    } catch (InvocationTargetException e) {
-                        LOGGER.log(Level.WARNING, "TimeoutPreventor - Error calling scheduleIdle() method on endpoint class " + endpoint.getClass().getName() + ": " + e.getMessage(), e);
+                }
+            };
+        } else {
+            //call code reflectively because by default we have no access to jetty internal classes from a webapp
+            // thus by only using HttpConnection we only need to add "-org.eclipse.jetty.server.HttpConnection" to server classes
+            // to allow access to this class from a webapp
+            final Object endpoint = httpConnection.getEndPoint();
+            // try to cancel IDLE time
+            try {
+                LOGGER.fine("TimeoutPreventor - Invoking cancelIdle() method on endpoint class " + endpoint.getClass().getName());
+                Method cancelIdle = endpoint.getClass().getMethod("cancelIdle");
+                cancelIdle.invoke(endpoint);
+            } catch (NoSuchMethodException e) {
+                LOGGER.fine("TimeoutPreventor - No cancelIdle() method on endpoint class " + endpoint.getClass().getName());
+            } catch (IllegalAccessException e) {
+                LOGGER.warning("TimeoutPreventor - Cannot access cancelIdle() method on endpoint class " + endpoint.getClass().getName());
+            } catch (InvocationTargetException e) {
+                LOGGER.log(Level.WARNING, "TimeoutPreventor - Error calling cancelIdle() method on endpoint class " + endpoint.getClass().getName() + ": " + e.getMessage(), e);
+            }
+            // try to find scheduleIdle() method
+            try {
+                final Method scheduleIdle = endpoint.getClass().getMethod("scheduleIdle");
+                return new ConnectionTimeoutPreventer() {
+                    @Override
+                    public void connectionActive() {
+                        try {
+                            LOGGER.fine("TimeoutPreventor - Invoking scheduleIdle() method on endpoint class " + endpoint.getClass().getName());
+                            scheduleIdle.invoke(endpoint);
+                        } catch (IllegalAccessException e) {
+                            LOGGER.warning("TimeoutPreventor - Cannot access scheduleIdle() method on endpoint class " + endpoint.getClass().getName());
+                        } catch (InvocationTargetException e) {
+                            LOGGER.log(Level.WARNING, "TimeoutPreventor - Error calling scheduleIdle() method on endpoint class " + endpoint.getClass().getName() + ": " + e.getMessage(), e);
+                        }
                     }
-                }
-            };
-        } catch (NoSuchMethodException e) {
-            // if the method does not exit, do nothing
-            return new ConnectionTimeoutPreventer() {
-                @Override
-                public void connectionActive() {
-                }
-            };
+                };
+            } catch (NoSuchMethodException e) {
+                // if the method does not exit, do nothing
+                return new ConnectionTimeoutPreventer() {
+                    @Override
+                    public void connectionActive() {
+                    }
+                };
+            }
         }
     }
 }
