@@ -47,7 +47,7 @@ public abstract class SocketIOServlet extends HttpServlet {
     private SocketIOConfig config;
 
     @Override
-    public final void init() throws ServletException {
+    public void init() throws ServletException {
         config = new ServletBasedSocketIOConfig(getServletConfig(), "socketio");
 
         // lazy load available transport handlers
@@ -79,7 +79,7 @@ public abstract class SocketIOServlet extends HttpServlet {
     }
 
     @Override
-    public final void destroy() {
+    public void destroy() {
         for (Transport t : config.getTransports()) {
             t.destroy();
         }
@@ -87,12 +87,12 @@ public abstract class SocketIOServlet extends HttpServlet {
     }
 
     @Override
-    protected final void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         serve(req, resp);
     }
 
     @Override
-    protected final void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         serve(req, resp);
     }
 
