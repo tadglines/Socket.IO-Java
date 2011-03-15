@@ -120,6 +120,12 @@ public abstract class SocketIOServlet extends HttpServlet {
                 OutputStream os = response.getOutputStream();
                 IO.copy(is, os);
                 return;
+            }else if ("GET".equals(request.getMethod()) && "WebSocketMain.swf".equals(parts[0])) {
+                response.setContentType("application/x-shockwave-flash");
+                InputStream is = this.getClass().getClassLoader().getResourceAsStream("com/glines/socketio/WebSocketMain.swf");
+                OutputStream os = response.getOutputStream();
+                IO.copy(is, os);
+                return;
             } else {
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Unknown SocketIO transport: " + parts[0]);
                 return;
