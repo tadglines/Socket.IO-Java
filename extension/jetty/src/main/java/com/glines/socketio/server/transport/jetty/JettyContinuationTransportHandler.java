@@ -395,7 +395,7 @@ public final class JettyContinuationTransportHandler extends AbstractTransportHa
     private static ConnectionTimeoutPreventer newTimeoutPreventor() {
         HttpConnection httpConnection = HttpConnection.getCurrentConnection();
         if (httpConnection == null) {
-            LOGGER.log(Level.WARNING, "No HttpConnection boundto local thread: " + Thread.currentThread().getName());
+            LOGGER.log(Level.FINE, "No HttpConnection boundto local thread: " + Thread.currentThread().getName());
             return new ConnectionTimeoutPreventer() {
                 @Override
                 public void connectionActive() {
