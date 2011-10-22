@@ -24,22 +24,42 @@
  */
 package com.glines.socketio.server.transport.jetty;
 
-import com.glines.socketio.server.*;
-import com.glines.socketio.util.Web;
-import org.eclipse.jetty.websocket.WebSocket;
-import org.eclipse.jetty.websocket.WebSocketFactory;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
+import org.eclipse.jetty.websocket.WebSocket;
+import org.eclipse.jetty.websocket.WebSocketFactory;
+import org.eclipse.jetty.websocket.WebSocketFactory.Acceptor;
+
+import com.glines.socketio.server.AbstractTransport;
+import com.glines.socketio.server.SessionManager;
+import com.glines.socketio.server.SocketIOInbound;
+import com.glines.socketio.server.SocketIOSession;
+import com.glines.socketio.server.Transport;
+import com.glines.socketio.server.TransportHandler;
+import com.glines.socketio.server.TransportInitializationException;
+import com.glines.socketio.server.TransportType;
+import com.glines.socketio.util.Web;
 
 public final class JettyWebSocketTransport extends AbstractTransport {
 
     private static final Logger LOGGER = Logger.getLogger(JettyWebSocketTransport.class.getName());
 
-    private final WebSocketFactory wsFactory = new WebSocketFactory();
+    private final WebSocketFactory wsFactory = new WebSocketFactory(new Acceptor() {
+      @Override
+      public WebSocket doWebSocketConnect(HttpServletRequest request, String protocol) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public boolean checkOrigin(HttpServletRequest arg0, String arg1) {
+        throw new UnsupportedOperationException();
+      }
+    });
 
     @Override
     public void init() throws TransportInitializationException {
@@ -87,7 +107,7 @@ public final class JettyWebSocketTransport extends AbstractTransport {
                 SocketIOSession session = sessionFactory.createSession(inbound);
                 TransportHandler handler = newHandler(WebSocket.class, session);
                 handler.init(getConfig());
-                wsFactory.upgrade(request, response, WebSocket.class.cast(handler), origin, protocol);
+                wsFactory.upgrade(request, response, WebSocket.class.cast(handler), protocol);
             }
         } else {
             response.sendError(HttpServletResponse.SC_BAD_REQUEST, this + " transport error: Invalid request");

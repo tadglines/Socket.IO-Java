@@ -43,14 +43,14 @@ import java.util.logging.Logger;
  * @author Mathieu Carbou
  */
 @Handle({TransportType.WEB_SOCKET, TransportType.FLASH_SOCKET})
-public final class JettyWebSocketTransportHandler extends AbstractTransportHandler implements WebSocket {
+public final class JettyWebSocketTransportHandler extends AbstractTransportHandler implements WebSocket.OnTextMessage, WebSocket.OnBinaryMessage {
 
     private static final long DEFAULT_HEARTBEAT_DELAY = SocketIOConfig.DEFAULT_MAX_IDLE / 2;
     private static final long DEFAULT_HEARTBEAT_TIMEOUT = 10 * 1000;
 
     private static final Logger LOGGER = Logger.getLogger(JettyWebSocketTransportHandler.class.getName());
 
-    private Outbound outbound;
+    private Connection outbound;
     private boolean initiated;
 
     @Override
@@ -64,17 +64,17 @@ public final class JettyWebSocketTransportHandler extends AbstractTransportHandl
     }
 
     @Override
-    public void onConnect(final Outbound outbound) {
-        this.outbound = outbound;
+    public void onOpen(Connection connection) {
+      this.outbound = connection;
     }
 
     @Override
-    public void onDisconnect() {
+    public void onClose(int closeCode, String message) {
         getSession().onShutdown();
     }
 
     @Override
-    public void onMessage(byte frame, String message) {
+    public void onMessage(String message) {
         getSession().startHeartbeatTimer();
         if (!initiated) {
             if ("OPEN".equals(message)) {
@@ -100,17 +100,12 @@ public final class JettyWebSocketTransportHandler extends AbstractTransportHandl
     }
 
     @Override
-    public void onMessage(byte frame, byte[] data, int offset, int length) {
+    public void onMessage(byte[] data, int offset, int length) {
         try {
-            onMessage(frame, new String(data, offset, length, "UTF-8"));
+            onMessage(new String(data, offset, length, "UTF-8"));
         } catch (UnsupportedEncodingException e) {
             // Do nothing for now.
         }
-    }
-
-    @Override
-    public void onFragment(boolean more, byte opcode, byte[] data, int offset, int length) {
-        throw new UnsupportedOperationException();
     }
 
     @Override
