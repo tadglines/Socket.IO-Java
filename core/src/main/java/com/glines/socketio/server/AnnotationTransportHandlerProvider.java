@@ -40,7 +40,7 @@ import java.util.logging.Logger;
 /**
  * @author Mathieu Carbou (mathieu.carbou@gmail.com)
  */
-final class AnnotationTransportHandlerProvider implements TransportHandlerProvider {
+public final class AnnotationTransportHandlerProvider implements TransportHandlerProvider {
 
     private static final Logger LOGGER = Logger.getLogger(AnnotationTransportHandlerProvider.class.getName());
 

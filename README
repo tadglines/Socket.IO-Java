@@ -19,3 +19,10 @@ To use in a jetty webapp, grant access in your jetty xml file to the jetty serve
     </Set>
 
 </Configure>
+
+More info:
+
+mvn eclipse:eclipse # for import the project in eclipse
+mvn install -Dlicense.skip=true # to install the jars in your repo
+
+Lauch from eclipse the Start* sample classes to test it.

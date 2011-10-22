@@ -34,7 +34,7 @@ import java.util.logging.Logger;
 /**
  * @author Mathieu Carbou
  */
-final class ServletBasedSocketIOConfig implements SocketIOConfig {
+public final class ServletBasedSocketIOConfig implements SocketIOConfig {
 
     private static final Logger LOGGER = Logger.getLogger(ServletBasedSocketIOConfig.class.getName());
     private static final String KEY_TRANSPORT = SocketIOConfig.class.getName() + ".TRANSPORTS";
