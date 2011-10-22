@@ -86,9 +86,10 @@ final class XHRMultipartDataHandler extends AbstractDataHandler {
         if (LOGGER.isLoggable(Level.FINE))
             LOGGER.log(Level.FINE, "Session[" + session.getSessionId() + "]: writeData(START): " + data);
         ServletOutputStream os = response.getOutputStream();
-        os.println("Content-Type: text/plain");
+        os.println("Content-Type: text/plain; charset=utf-8");
         os.println();
-        os.println(data);
+        os.write(data.getBytes());
+        os.println();
         os.println(boundarySeperator);
         response.flushBuffer();
         if (LOGGER.isLoggable(Level.FINE))
