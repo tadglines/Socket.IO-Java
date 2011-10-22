@@ -24,14 +24,12 @@
  */
 package com.glines.socketio.server;
 
-import com.glines.socketio.util.Web;
-
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
-final class SocketIOSessionManager implements SessionManager {
+public final class SocketIOSessionManager implements SessionManager {
 
     final ConcurrentMap<String, SocketIOSession> socketIOSessions = new ConcurrentHashMap<String, SocketIOSession>();
     final ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
